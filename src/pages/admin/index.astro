@@ -255,7 +255,7 @@ const standardPasswort = STANDARD_PASSWORT;
             <button class="btn btn--ghost btn--sm" type="button" data-neuspieler="${esc(k.id)}">+ Spieler in ${esc(k.kurz)}</button></section>`;
         }).join('');
         return `<div class="a-intro"><h1>Spieler</h1><p class="muted">Teilnehmer aus der Zulassungsliste in nuLiga übernehmen. Die LK bestimmt die Reihenfolge im Spiralsystem.</p>
-          <p class="hinweisbox">Alle Teilnehmenden sind minderjährig. Fotos eines Kindes erscheinen nur, wenn hier „Liegt vor“ eingetragen ist – also das unterschriebene Formular der Erziehungsberechtigten vorliegt. Bei einem Widerruf auf „Abgelehnt / widerrufen“ stellen: Alle Fotos des Kindes verschwinden sofort von der Website.</p></div>
+          <p class="hinweisbox">Alle Teilnehmenden sind minderjährig. Fotos eines Kindes erscheinen nur, wenn hier „Liegt vor“ eingetragen ist – also das unterschriebene Formular der Erziehungsberechtigten vorliegt. Bei einem Widerruf auf „Abgelehnt / widerrufen“ stellen: Alle Fotos des Kindes verschwinden sofort von der Website. <a href="/downloads/Einwilligung-Fotos-Gelsen-Gold-Slam-2027.pdf" target="_blank">Formular zum Ausdrucken (PDF)</a></p></div>
           <div class="filter"><select id="filterK" aria-label="Konkurrenz"><option value="alle">Alle Konkurrenzen</option>${daten.konkurrenzen.map((k: any) => `<option value="${esc(k.id)}" ${filterK === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></div>${gruppen}`;
       }
 

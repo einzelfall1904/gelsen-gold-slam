@@ -41,6 +41,8 @@ const e = d.einstellungen;
 
         <h2 style="margin-top:40px">Fotos &amp; Datenschutz</h2>
         <div class="prose">{absaetze(e.hinweisFotos).map((p) => <p>{p}</p>)}</div>
+        <a class="btn btn--navy" href={`/downloads/Einwilligung-Fotos-Gelsen-Gold-Slam-${e.jahr}.pdf`} download>Einwilligungsformular herunterladen (PDF)</a>
+        <p class="small muted" style="margin-top:8px">Ausgefüllt und unterschrieben am Turniertag bei der Turnierleitung abgeben. Formulare liegen dort auch aus.</p>
       </div>
       <aside>
         <div class="card sticky">
