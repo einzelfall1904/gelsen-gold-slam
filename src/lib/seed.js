@@ -2,6 +2,16 @@
 // Verwaltung (/admin) geändert werden. Die Spielernamen sind frei erfunden.
 import { spiralPaarungen } from './tennis.js';
 
+/** Alter Hinweistext (Widerspruchslösung) – wird bei bestehenden Daten automatisch ersetzt. */
+export const HINWEIS_FOTOS_ALT =
+  'Während des Turniers werden Fotos gemacht, die auf dieser Website und in den Kanälen der TG Gold-Weiß erscheinen können. Mit der Anmeldung erklären sich die Erziehungsberechtigten damit einverstanden. Wer das nicht möchte, gibt bitte am Turniertag bei der Turnierleitung Bescheid.';
+
+/** Alle Teilnehmenden sind minderjährig: Fotos nur mit ausdrücklicher Einwilligung der Eltern. */
+export const HINWEIS_FOTOS =
+  'Alle Teilnehmenden sind minderjährig. Fotos, auf denen ein Kind erkennbar ist, veröffentlichen wir deshalb nur mit der schriftlichen Einwilligung der Erziehungsberechtigten.\n\nDas Einwilligungsformular erhaltet ihr bei der Anmeldung vor Ort an der Turnierleitung. Ohne Einwilligung erscheinen keine Fotos eures Kindes – weder auf dieser Website noch in den Kanälen der TG Gold-Weiß.\n\nDie Einwilligung ist freiwillig und kann jederzeit ohne Angabe von Gründen per E-Mail an die Turnierleitung widerrufen werden. Betroffene Fotos entfernen wir dann umgehend.';
+
+export const DATEN_VERSION = 2;
+
 const KONKURRENZEN = [
   { id: 'u12m', name: 'Junioren U12', kurz: 'U12 m', jahrgaenge: '2015 – 2017', max: 8, hinweis: 'Jahrgang 2015 sowie jüngere Jahrgänge 2016/2017 (Höherspielen erlaubt).' },
   { id: 'u12w', name: 'Juniorinnen U12', kurz: 'U12 w', jahrgaenge: '2015 – 2017', max: 8, hinweis: 'Jahrgang 2015 sowie jüngere Jahrgänge 2016/2017 (Höherspielen erlaubt).' },
@@ -32,6 +42,9 @@ function erzeugeSpieler() {
         verein: VEREINE[(nn * 3 + i) % VEREINE.length],
         lk: Math.round((14 + i * 1.7 + (nn % 3) * 0.4) * 10) / 10,
         konkurrenz: k.id,
+        // Beispielwerte zum Testen: die meisten mit, einige ohne Einwilligung
+        fotoEinwilligung: i === 5 ? 'nein' : i % 3 === 2 ? 'offen' : 'ja',
+        einwilligungDatum: i === 5 || i % 3 === 2 ? '' : '2027-05-29',
       });
     }
   }
@@ -121,8 +134,7 @@ export function seedDaten() {
         'Unser Clubhaus ist den ganzen Tag geöffnet. Es gibt Getränke, belegte Brötchen, Obst und Kuchen – der Erlös kommt der Jugendarbeit zugute.',
       regeln:
         'Gespielt wird nach den ITF-Tennisregeln, der DTB-Turnierordnung sowie den WTV-Richtlinien für LK-Turniere.\n\nDie Anmeldung erfolgt ausschließlich online über tennis.de. Teilnahmeberechtigt sind Spielerinnen und Spieler, die Mitglied in einem Verein des DTB sind, eine ID-Nummer und eine LK besitzen sowie über eine tennis.de-Lizenz (LIZENZ oder PREMIUM) verfügen.\n\nBei einem LK-Tagesturnier ist die Teilnahme an nur einer Konkurrenz möglich. Jede Spielerin und jeder Spieler bestreitet zwei Einzel. Die Setzung erfolgt automatisch nach LK.\n\nBei zu wenigen Meldungen können Konkurrenzen zusammengelegt werden; maßgebend ist dann die höhere Altersklasse.\n\nSpiele in der U12 beginnen nicht vor 8:00 Uhr, der letzte Spielbeginn ist spätestens 21:00 Uhr.',
-      hinweisFotos:
-        'Während des Turniers werden Fotos gemacht, die auf dieser Website und in den Kanälen der TG Gold-Weiß erscheinen können. Mit der Anmeldung erklären sich die Erziehungsberechtigten damit einverstanden. Wer das nicht möchte, gibt bitte am Turniertag bei der Turnierleitung Bescheid.',
+      hinweisFotos: HINWEIS_FOTOS,
       impressum:
         'TG Gold-Weiß Gelsenkirchen e. V.\nFeldmarkstraße 200\n[PLZ] Gelsenkirchen\n\nVertreten durch den Vorstand: [Name 1. Vorsitzende/r]\nE-Mail: info@tg-gold-weiss.de\n\nRegistergericht: Amtsgericht Gelsenkirchen\nRegisternummer: [VR …]\n\nVerantwortlich für den Inhalt: [Name, Anschrift]',
     },
@@ -144,6 +156,7 @@ export function seedDaten() {
       { id: 's4', name: 'Partner 3 (Platzhalter)', url: '', stufe: 'partner', logo: '' },
     ],
     galerie: [],
+    version: DATEN_VERSION,
     aktualisiert: new Date().toISOString(),
   };
 }

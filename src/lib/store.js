@@ -6,6 +6,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { seedDaten } from './seed.js';
 import { auswerten } from './tennis.js';
+import { migriere } from './migration.js';
+import { fotoStatus, spielerIndex } from './einwilligung.js';
 
 export const AUF_NETLIFY = Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || globalThis.Netlify);
 
@@ -30,16 +32,21 @@ async function speichereRoh(daten) {
   fs.renameSync(tmp, FILE);
 }
 
+async function ladeRoh() {
+  if (AUF_NETLIFY) return (await blobStore('gelsen-gold-slam-daten')).get(KEY, { type: 'json' });
+  return fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : null;
+}
+
 export async function ladeDaten() {
-  if (AUF_NETLIFY) {
-    const d = await (await blobStore('gelsen-gold-slam-daten')).get(KEY, { type: 'json' });
-    if (d) return d;
-  } else if (fs.existsSync(FILE)) {
-    return JSON.parse(fs.readFileSync(FILE, 'utf8'));
+  const roh = await ladeRoh();
+  if (!roh) {
+    const neu = seedDaten();
+    await speichereRoh(neu);
+    return neu;
   }
-  const neu = seedDaten();
-  await speichereRoh(neu);
-  return neu;
+  const { daten, geaendert } = migriere(roh);
+  if (geaendert) await speichereRoh(daten);
+  return daten;
 }
 
 const LISTEN = ['konkurrenzen', 'spieler', 'spiele', 'ablauf', 'sponsoren', 'galerie'];
@@ -61,6 +68,16 @@ export async function speichereDaten(neu) {
   }
   if (fehler.length) return { ok: false, fehler };
 
+  // Einwilligungen nur mit gültigen Werten speichern; im Zweifel „offen“ (= keine Veröffentlichung)
+  for (const sp of neu.spieler) {
+    if (!['offen', 'ja', 'nein'].includes(sp.fotoEinwilligung)) sp.fotoEinwilligung = 'offen';
+  }
+  for (const g of neu.galerie) {
+    g.personen = Array.isArray(g.personen) ? g.personen.filter((id) => typeof id === 'string') : [];
+    g.keinePersonen = g.keinePersonen === true;
+    delete g.einverstaendnis;
+  }
+  neu.version = (await import('./seed.js')).DATEN_VERSION;
   neu.aktualisiert = new Date().toISOString();
   await speichereRoh(neu);
   return { ok: true, daten: neu };
@@ -72,9 +89,24 @@ export async function zuruecksetzen() {
   return d;
 }
 
-/** Öffentliche Sicht: nur Fotos mit Einverständnis. */
+/**
+ * Öffentliche Sicht der Galerie: nur Fotos, für deren abgebildete Kinder ALLE
+ * Eltern eingewilligt haben (oder auf denen keine Personen erkennbar sind).
+ * Die Zuordnung (wer ist auf dem Foto) wird nicht veröffentlicht.
+ */
 export function oeffentlich(daten) {
-  return { ...daten, galerie: daten.galerie.filter((g) => g.einverstaendnis) };
+  const idx = spielerIndex(daten.spieler);
+  const galerie = daten.galerie
+    .filter((g) => fotoStatus(g, idx).oeffentlich)
+    .map(({ id, datei, titel, album }) => ({ id, datei, titel, album }));
+  return { ...daten, galerie };
+}
+
+/** Darf diese hochgeladene Datei ohne Anmeldung ausgeliefert werden? */
+export function dateiOeffentlich(daten, url) {
+  const foto = daten.galerie.find((g) => g.datei === url);
+  if (!foto) return true; // z. B. Sponsorenlogos
+  return fotoStatus(foto, spielerIndex(daten.spieler)).oeffentlich;
 }
 
 // ---------- Hochgeladene Bilder ----------

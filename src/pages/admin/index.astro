@@ -63,6 +63,7 @@ const standardPasswort = STANDARD_PASSWORT;
 
   <script>
     import { auswerten, STATUS, ZAEHLWEISEN, spiralPaarungen, einzelProSpieler, formatErgebnis } from '../../lib/tennis.js';
+    import { EINWILLIGUNG, fotoStatus, spielerIndex } from '../../lib/einwilligung.js';
 
     const inhalt = document.getElementById('inhalt');
     if (inhalt) {
@@ -236,20 +237,25 @@ const standardPasswort = STANDARD_PASSWORT;
       function renderSpieler() {
         const gruppen = daten.konkurrenzen.filter((k: any) => filterK === 'alle' || k.id === filterK).map((k: any) => {
           const liste = daten.spieler.map((s: any, i: number) => ({ s, i })).filter(({ s }: any) => s.konkurrenz === k.id);
+          const mitEw = liste.filter(({ s }: any) => s.fotoEinwilligung === 'ja').length;
           return `<section class="gruppe"><h2>${esc(k.name)} <span class="muted small">(${liste.length} / max. ${k.max})</span></h2>
+            <p class="small muted">Foto-Einwilligung der Eltern liegt vor für <strong>${mitEw} von ${liste.length}</strong> Kindern.</p>
             ${liste.length > k.max ? `<p class="warnbox">Mehr Spieler als ausgeschrieben (${k.max}).</p>` : ''}
-            <div class="tab-wrap"><table class="plan"><thead><tr><th>Vorname</th><th>Nachname</th><th>Verein</th><th>LK</th><th>Konkurrenz</th><th></th></tr></thead><tbody>
+            <div class="tab-wrap"><table class="plan"><thead><tr><th>Vorname</th><th>Nachname</th><th>Verein</th><th>LK</th><th>Konkurrenz</th><th>Foto-Einwilligung Eltern</th><th>Erteilt am</th><th></th></tr></thead><tbody>
             ${liste.map(({ s, i }: any) => `<tr>
               <td data-l="Vorname"><input data-bind="spieler.${i}.vorname" value="${esc(s.vorname)}" /></td>
               <td data-l="Nachname"><input data-bind="spieler.${i}.nachname" value="${esc(s.nachname)}" /></td>
               <td data-l="Verein"><input data-bind="spieler.${i}.verein" value="${esc(s.verein)}" /></td>
               <td data-l="LK"><input class="lk" data-bind="spieler.${i}.lk" data-typ="number" type="number" step="0.1" min="1" max="25" value="${esc(s.lk)}" /></td>
               <td data-l="Konkurrenz"><select data-bind="spieler.${i}.konkurrenz" data-rerender>${daten.konkurrenzen.map((kk: any) => `<option value="${esc(kk.id)}" ${kk.id === s.konkurrenz ? 'selected' : ''}>${esc(kk.kurz)}</option>`).join('')}</select></td>
+              <td data-l="Foto-Einwilligung Eltern"><select class="ew ew-${esc(s.fotoEinwilligung || 'offen')}" data-bind="spieler.${i}.fotoEinwilligung" data-rerender>${Object.entries(EINWILLIGUNG).map(([v, t]) => `<option value="${v}" ${(s.fotoEinwilligung || 'offen') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
+              <td data-l="Erteilt am"><input type="date" data-bind="spieler.${i}.einwilligungDatum" value="${esc(s.einwilligungDatum || '')}" ${s.fotoEinwilligung === 'ja' ? '' : 'disabled'} /></td>
               <td><button type="button" class="x" data-del="spieler.${i}" aria-label="Spieler löschen">✕</button></td></tr>`).join('')}
             </tbody></table></div>
             <button class="btn btn--ghost btn--sm" type="button" data-neuspieler="${esc(k.id)}">+ Spieler in ${esc(k.kurz)}</button></section>`;
         }).join('');
-        return `<div class="a-intro"><h1>Spieler</h1><p class="muted">Teilnehmer aus der Zulassungsliste in nuLiga übernehmen. Die LK bestimmt die Reihenfolge im Spiralsystem.</p></div>
+        return `<div class="a-intro"><h1>Spieler</h1><p class="muted">Teilnehmer aus der Zulassungsliste in nuLiga übernehmen. Die LK bestimmt die Reihenfolge im Spiralsystem.</p>
+          <p class="hinweisbox">Alle Teilnehmenden sind minderjährig. Fotos eines Kindes erscheinen nur, wenn hier „Liegt vor“ eingetragen ist – also das unterschriebene Formular der Erziehungsberechtigten vorliegt. Bei einem Widerruf auf „Abgelehnt / widerrufen“ stellen: Alle Fotos des Kindes verschwinden sofort von der Website.</p></div>
           <div class="filter"><select id="filterK" aria-label="Konkurrenz"><option value="alle">Alle Konkurrenzen</option>${daten.konkurrenzen.map((k: any) => `<option value="${esc(k.id)}" ${filterK === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></div>${gruppen}`;
       }
 
@@ -314,13 +320,29 @@ const standardPasswort = STANDARD_PASSWORT;
 
       // ---------- Bereich: Galerie ----------
       function renderGalerie() {
-        return `<div class="a-intro"><h1>Galerie</h1><p class="muted">Fotos erscheinen nur, wenn „Einverständnis liegt vor“ angehakt ist – bei Kindern das der Eltern.</p></div>
+        const idx = spielerIndex(daten.spieler);
+        const optionen = daten.konkurrenzen.map((k: any) => `<optgroup label="${esc(k.name)}">${daten.spieler.filter((s: any) => s.konkurrenz === k.id)
+          .map((s: any) => `<option value="${esc(s.id)}">${esc(s.vorname)} ${esc(s.nachname)}${s.fotoEinwilligung === 'ja' ? '' : ' – ohne Einwilligung'}</option>`).join('')}</optgroup>`).join('');
+        const anzahlOeff = daten.galerie.filter((g: any) => fotoStatus(g, idx).oeffentlich).length;
+        return `<div class="a-intro"><h1>Galerie</h1>
+          <p class="hinweisbox">Bei jedem Foto eintragen, <strong>welche Kinder darauf zu erkennen sind</strong>. Ein Foto wird nur veröffentlicht, wenn für <strong>jedes</strong> dieser Kinder die Einwilligung der Eltern vorliegt (Bereich „Spieler“). Fotos ohne erkennbare Personen (z. B. Anlage, Pokale) als solche markieren.</p>
+          <p class="muted">${anzahlOeff} von ${daten.galerie.length} Fotos sind öffentlich sichtbar.</p></div>
           <label class="btn btn--gold">Fotos hochladen<input type="file" accept="image/*" multiple id="fotoUpload" hidden /></label>
-          <div class="fotos">${daten.galerie.map((g: any, i: number) => `<div class="card foto">
+          <div class="fotos">${daten.galerie.map((g: any, i: number) => {
+            const st = fotoStatus(g, idx);
+            const personen = g.personen || [];
+            const pname = (id: string) => (idx[id] ? `${idx[id].vorname} ${idx[id].nachname}` : 'Gelöschte Person');
+            return `<div class="card foto">
             <img src="${esc(g.datei)}" alt="" />
-            ${feld('Bildunterschrift', `galerie.${i}.titel`, g.titel)}${feld('Album', `galerie.${i}.album`, g.album)}
-            <label class="check"><input type="checkbox" data-bind="galerie.${i}.einverstaendnis" ${g.einverstaendnis ? 'checked' : ''}/> Einverständnis liegt vor</label>
-            <button type="button" class="x" data-del="galerie.${i}" aria-label="Foto entfernen">✕</button></div>`).join('') || '<p class="leer">Noch keine Fotos.</p>'}</div>`;
+            <p class="fstatus ${st.oeffentlich ? 'ok' : 'warn'}">${st.oeffentlich ? '✓ Öffentlich' : '⛔ Nicht öffentlich'} – ${esc(st.grund)}</p>
+            <div class="fld"><span class="lbl">Abgebildete Kinder</span>
+              <ul class="chips">${personen.map((id: string) => `<li class="${idx[id]?.fotoEinwilligung === 'ja' ? 'ja' : 'nein'}">${esc(pname(id))}<button type="button" data-person-del="${i}.${esc(id)}" aria-label="${esc(pname(id))} entfernen">✕</button></li>`).join('') || '<li class="leer-chip">noch niemand zugeordnet</li>'}</ul>
+              <select data-person-add="${i}" aria-label="Kind hinzufügen" ${g.keinePersonen ? 'disabled' : ''}><option value="">+ Kind hinzufügen …</option>${optionen}</select>
+            </div>
+            <label class="check"><input type="checkbox" data-bind="galerie.${i}.keinePersonen" data-rerender ${g.keinePersonen ? 'checked' : ''} ${personen.length ? 'disabled' : ''}/> Keine Personen erkennbar</label>
+            ${feld('Bildunterschrift', `galerie.${i}.titel`, g.titel, { hilfe: 'Bitte keine Kindernamen in die Bildunterschrift schreiben.' })}${feld('Album', `galerie.${i}.album`, g.album)}
+            <button type="button" class="x" data-del="galerie.${i}" aria-label="Foto entfernen">✕</button></div>`;
+          }).join('') || '<p class="leer">Noch keine Fotos.</p>'}</div>`;
       }
 
       const BEREICHE: Record<string, () => string> = { heute: renderHeute, spielplan: renderSpielplan, spieler: renderSpieler, konkurrenzen: renderKonkurrenzen, texte: renderTexte, ablauf: renderAblauf, sponsoren: renderSponsoren, galerie: renderGalerie };
@@ -346,6 +368,13 @@ const standardPasswort = STANDARD_PASSWORT;
       inhalt.addEventListener('change', async (ev) => {
         const el = ev.target as HTMLInputElement;
         if (el.id === 'filterK') { filterK = el.value; render(); return; }
+        if (el.dataset.personAdd !== undefined && el.value) {
+          const g = daten.galerie[+el.dataset.personAdd];
+          g.personen = g.personen || [];
+          if (!g.personen.includes(el.value)) g.personen.push(el.value);
+          g.keinePersonen = false;
+          render(); return;
+        }
         if (el.dataset.sieger) { daten.spiele[+el.dataset.sieger].sieger = el.value; render(); return; }
         if (el.dataset.notiz) { daten.spiele[+el.dataset.notiz].notiz = el.value; return; }
         if (el.dataset.upload || el.id === 'fotoUpload') {
@@ -355,7 +384,7 @@ const standardPasswort = STANDARD_PASSWORT;
             const j = await r.json().catch(() => ({}));
             if (!r.ok) { toast(j.fehler || 'Upload fehlgeschlagen.', true); continue; }
             if (el.dataset.upload) setPfad(el.dataset.upload, j.url);
-            else daten.galerie.push({ id: uid('g'), datei: j.url, titel: '', album: 'Turniertag', einverstaendnis: false });
+            else daten.galerie.push({ id: uid('g'), datei: j.url, titel: '', album: 'Turniertag', personen: [], keinePersonen: false });
           }
           toast('Hochgeladen – bitte noch „Änderungen speichern“.'); render();
           return;
@@ -406,6 +435,12 @@ const standardPasswort = STANDARD_PASSWORT;
           render(); return;
         }
         if (b.dataset.fs) { filterS = b.dataset.fs; render(); return; }
+        if (b.dataset.personDel) {
+          const [gi, pid] = b.dataset.personDel.split('.');
+          const g = daten.galerie[+gi];
+          g.personen = (g.personen || []).filter((x: string) => x !== pid);
+          render(); return;
+        }
         if (b.dataset.del) {
           const [liste, idx] = b.dataset.del.split('.');
           const was = { spiele: 'dieses Spiel', spieler: 'diesen Spieler', ablauf: 'diesen Programmpunkt', sponsoren: 'diesen Sponsor', galerie: 'dieses Foto' }[liste] || 'diesen Eintrag';
@@ -546,6 +581,20 @@ const standardPasswort = STANDARD_PASSWORT;
     .foto img { aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; width: 100%; }
     .foto > .x { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.9); }
     .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+    .hinweisbox { background: var(--gold-soft); border-left: 4px solid var(--gold); padding: 10px 14px; border-radius: 8px; color: #5C4410; font-size: .92rem; max-width: 80ch; }
+    .fstatus { margin: 0; font-size: .85rem; font-weight: 700; padding: 6px 10px; border-radius: 8px; }
+    .fstatus.ok { background: #E5F2EA; color: var(--ok); }
+    .fstatus.warn { background: #FCE8E4; color: var(--live); }
+    .lbl { font-weight: 700; font-size: .85rem; }
+    .chips { list-style: none; margin: 4px 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .chips li { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; font-size: .82rem; font-weight: 600; }
+    .chips li.ja { background: #E5F2EA; color: var(--ok); }
+    .chips li.nein { background: #FCE8E4; color: var(--live); }
+    .chips li.leer-chip { background: var(--bg-2); color: var(--ink-2); padding: 3px 10px; font-weight: 500; }
+    .chips button { border: 0; background: none; color: inherit; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; }
+    select.ew-ja { border-color: var(--ok); color: var(--ok); font-weight: 700; }
+    select.ew-nein { border-color: var(--live); color: var(--live); font-weight: 700; }
+    select.ew-offen { border-color: #E3B341; }
     .danger { margin-top: 24px; border-color: #F0B7AC; }
     .leer { padding: 20px; background: #fff; border-radius: var(--radius); color: var(--ink-2); }
     .savebar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--navy-deep); color: #fff; display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 16px; z-index: 40; box-shadow: 0 -6px 20px rgba(0,0,0,.2); }

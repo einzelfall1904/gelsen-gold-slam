@@ -35,7 +35,8 @@ Damit könnt ihr die Seite im gleichen WLAN auch am Handy testen.
 | Spieler | Teilnehmer mit Verein und LK |
 | Konkurrenzen | Namen, Jahrgänge, Feldgrößen |
 | Texte & Eckdaten | Datum, Meldeschluss, Startgeld, alle Texte, Impressum |
-| Ablauf / Sponsoren / Galerie | Zeitplan, Logos, Fotos (nur mit Einverständnis sichtbar) |
+| Spieler: Foto-Einwilligung | Je Kind: Einwilligung der Eltern liegt vor / offen / widerrufen |
+| Ablauf / Sponsoren / Galerie | Zeitplan, Logos, Fotos. Ein Foto ist nur öffentlich, wenn für **jedes** abgebildete Kind die Einwilligung vorliegt |
 
 Alle Inhalte sind Platzhalter. Die Spielernamen sind frei erfunden.
 „Texte & Eckdaten“ → „Beispieldaten wiederherstellen“ setzt alles zurück.
