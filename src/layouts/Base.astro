@@ -25,6 +25,9 @@ const nav = [
     <meta name="description" content={description || `${e.untertitel} – ${e.turnierart}.`} />
     <meta name="theme-color" content="#13263A" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Animationen: Inhalt erst zeigen, wenn sie starten (spätestens nach 2,5 s, falls etwas nicht lädt) -->
+    <script is:inline>document.documentElement.classList.add('js');setTimeout(function(){document.documentElement.classList.remove('js')},2500);</script>
+    <style is:inline>.js main,.js footer{visibility:hidden}</style>
   </head>
   <body>
     <a class="skip" href="#inhalt">Zum Inhalt springen</a>
@@ -46,6 +49,7 @@ const nav = [
           </ul>
         </nav>
       </div>
+      <div class="progress" aria-hidden="true"></div>
     </header>
 
     <main id="inhalt"><slot /></main>
@@ -64,9 +68,11 @@ const nav = [
           <li><a href="/admin">Turnierleitung</a></li>
         </ul>
       </div>
+      <div class="wrap"><p class="wordmark" aria-hidden="true">Gold Slam</p></div>
     </footer>
 
     <script>
+      import '../scripts/motion.js';
       const btn = document.querySelector('.menu-btn');
       const nav = document.getElementById('hauptnav');
       btn?.addEventListener('click', () => {
@@ -101,7 +107,10 @@ const nav = [
         .menu-btn { display: none; }
         nav ul { display: flex; gap: 2px; }
       }
-      .site-footer { background: var(--navy); color: #C9D3DD; padding: 32px 0; margin-top: 0; font-size: .92rem; }
+      .site-header { will-change: transform; }
+      .progress { position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--gold-bright); transform: scaleX(0); transform-origin: left center; }
+      .site-footer { background: var(--navy); color: #C9D3DD; padding: 32px 0 0; margin-top: 0; font-size: .92rem; overflow: hidden; }
+      .wordmark { margin: 20px 0 -0.18em; font-size: clamp(3.6rem, 15vw, 11rem); font-weight: 900; font-style: italic; font-stretch: 70%; text-transform: uppercase; line-height: .9; letter-spacing: -.02em; color: transparent; -webkit-text-stroke: 1.5px rgba(242, 188, 60, .55); white-space: nowrap; user-select: none; }
       .site-footer strong { color: #fff; }
       .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; }
       .foot ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: flex-start; }

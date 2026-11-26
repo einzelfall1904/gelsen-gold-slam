@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { seedDaten } from './seed.js';
+import { seedDaten, DATEN_VERSION } from './seed.js';
 import { auswerten } from './tennis.js';
 import { migriere } from './migration.js';
 import { fotoStatus, spielerIndex } from './einwilligung.js';
@@ -77,7 +77,7 @@ export async function speichereDaten(neu) {
     g.keinePersonen = g.keinePersonen === true;
     delete g.einverstaendnis;
   }
-  neu.version = (await import('./seed.js')).DATEN_VERSION;
+  neu.version = DATEN_VERSION;
   neu.aktualisiert = new Date().toISOString();
   await speichereRoh(neu);
   return { ok: true, daten: neu };
