@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Kopf from '../components/Kopf.astro';
 import { ladeDaten } from '../lib/store.js';
-const e = ladeDaten().einstellungen;
+const e = (await ladeDaten()).einstellungen;
 ---
 <Base title="Datenschutz">
   <Kopf titel="Datenschutzerklärung" />

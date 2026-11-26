@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Kopf from '../components/Kopf.astro';
 import { ladeDaten } from '../lib/store.js';
 import { absaetze } from '../lib/format.js';
-const e = ladeDaten().einstellungen;
+const e = (await ladeDaten()).einstellungen;
 const karte = `https://www.openstreetmap.org/search?query=${encodeURIComponent(e.adresse)}`;
 ---
 <Base title="Kontakt & Anfahrt" aktiv="/kontakt">

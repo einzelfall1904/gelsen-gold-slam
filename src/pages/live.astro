@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { ladeDaten } from '../lib/store.js';
 import { liveDaten } from '../lib/live.js';
 
-const d = ladeDaten();
+const d = await ladeDaten();
 const e = d.einstellungen;
 const json = JSON.stringify(liveDaten(d)).replace(/</g, '\\u003c');
 ---

@@ -1,34 +1,51 @@
-// Speichert alle Turnierdaten in einer JSON-Datei (data/turnier.json).
-// Für den lokalen Testbetrieb genügt das; für den Live-Betrieb im Internet
-// wird dieser Speicher später durch ein Redaktionssystem (z. B. Sanity) ersetzt.
+// Speichert alle Turnierdaten.
+// - Lokal: JSON-Datei data/turnier.json, Bilder in data/uploads/
+// - Auf Netlify: Netlify Blobs (dort gibt es keine dauerhafte Festplatte)
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { seedDaten } from './seed.js';
 import { auswerten } from './tennis.js';
 
-export const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), 'data'));
-export const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
-const FILE = path.join(DATA_DIR, 'turnier.json');
+export const AUF_NETLIFY = Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || globalThis.Netlify);
 
-export function ladeDaten() {
-  if (!fs.existsSync(FILE)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    speichereRoh(seedDaten());
-  }
-  return JSON.parse(fs.readFileSync(FILE, 'utf8'));
+const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), 'data'));
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+const FILE = path.join(DATA_DIR, 'turnier.json');
+const KEY = 'turnier';
+
+async function blobStore(name) {
+  const { getStore } = await import('@netlify/blobs');
+  return getStore({ name, consistency: 'strong' });
 }
 
-function speichereRoh(daten) {
+async function speichereRoh(daten) {
+  if (AUF_NETLIFY) {
+    await (await blobStore('gelsen-gold-slam-daten')).setJSON(KEY, daten);
+    return;
+  }
+  fs.mkdirSync(DATA_DIR, { recursive: true });
   const tmp = FILE + '.' + crypto.randomBytes(4).toString('hex') + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(daten, null, 2));
   fs.renameSync(tmp, FILE);
 }
 
+export async function ladeDaten() {
+  if (AUF_NETLIFY) {
+    const d = await (await blobStore('gelsen-gold-slam-daten')).get(KEY, { type: 'json' });
+    if (d) return d;
+  } else if (fs.existsSync(FILE)) {
+    return JSON.parse(fs.readFileSync(FILE, 'utf8'));
+  }
+  const neu = seedDaten();
+  await speichereRoh(neu);
+  return neu;
+}
+
 const LISTEN = ['konkurrenzen', 'spieler', 'spiele', 'ablauf', 'sponsoren', 'galerie'];
 
 /** Prüft und speichert die Daten aus der Verwaltung. Gibt Fehler zurück, falls ungültig. */
-export function speichereDaten(neu) {
+export async function speichereDaten(neu) {
   const fehler = [];
   if (!neu || typeof neu !== 'object' || typeof neu.einstellungen !== 'object') {
     return { ok: false, fehler: ['Ungültiges Datenformat.'] };
@@ -45,17 +62,35 @@ export function speichereDaten(neu) {
   if (fehler.length) return { ok: false, fehler };
 
   neu.aktualisiert = new Date().toISOString();
-  speichereRoh(neu);
+  await speichereRoh(neu);
   return { ok: true, daten: neu };
 }
 
-export function zuruecksetzen() {
+export async function zuruecksetzen() {
   const d = seedDaten();
-  speichereRoh(d);
+  await speichereRoh(d);
   return d;
 }
 
 /** Öffentliche Sicht: nur Fotos mit Einverständnis. */
 export function oeffentlich(daten) {
   return { ...daten, galerie: daten.galerie.filter((g) => g.einverstaendnis) };
+}
+
+// ---------- Hochgeladene Bilder ----------
+export async function bildSpeichern(name, buffer, typ) {
+  if (AUF_NETLIFY) {
+    await (await blobStore('gelsen-gold-slam-bilder')).set(name, buffer, { metadata: { typ } });
+    return;
+  }
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.writeFileSync(path.join(UPLOAD_DIR, name), Buffer.from(buffer));
+}
+
+export async function bildLaden(name) {
+  if (AUF_NETLIFY) {
+    return (await blobStore('gelsen-gold-slam-bilder')).get(name, { type: 'arrayBuffer' });
+  }
+  const file = path.join(UPLOAD_DIR, name);
+  return fs.existsSync(file) ? fs.readFileSync(file) : null;
 }

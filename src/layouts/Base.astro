@@ -4,7 +4,7 @@ import { ladeDaten } from '../lib/store.js';
 
 interface Props { title?: string; description?: string; aktiv?: string; }
 const { title, description, aktiv } = Astro.props;
-const { einstellungen: e } = ladeDaten();
+const { einstellungen: e } = await ladeDaten();
 const seitenTitel = title ? `${title} – ${e.name} ${e.jahr}` : `${e.name} ${e.jahr}`;
 const nav = [
   ['/', 'Start'],

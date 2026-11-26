@@ -1,9 +1,9 @@
 ---
 import '../../styles/global.css';
-import { istAngemeldet, PASSWORT } from '../../lib/auth.js';
+import { istAngemeldet, PASSWORT, PASSWORT_FEHLT, STANDARD_PASSWORT } from '../../lib/auth.js';
 const angemeldet = istAngemeldet(Astro.cookies);
 const fehler = Astro.url.searchParams.has('fehler');
-const standardPasswort = !process.env.ADMIN_PASSWORT;
+const standardPasswort = STANDARD_PASSWORT;
 ---
 <!doctype html>
 <html lang="de">
@@ -36,6 +36,7 @@ const standardPasswort = !process.env.ADMIN_PASSWORT;
         {fehler && <p class="err" role="alert">Das Passwort stimmt nicht. Bitte noch einmal versuchen.</p>}
         <button class="btn btn--gold" type="submit">Anmelden</button>
         {standardPasswort && <p class="small muted">Testbetrieb – Standardpasswort: <code>{PASSWORT}</code></p>}
+        {PASSWORT_FEHLT && <p class="err" role="alert">Anmeldung gesperrt: In Netlify ist noch kein Passwort hinterlegt (Umgebungsvariable ADMIN_PASSWORT).</p>}
       </form>
     </main>
   ) : (

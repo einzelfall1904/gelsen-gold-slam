@@ -4,7 +4,7 @@ import Sponsoren from '../components/Sponsoren.astro';
 import { ladeDaten } from '../lib/store.js';
 import { datumLang, datumZeit, absaetze } from '../lib/format.js';
 
-const d = ladeDaten();
+const d = await ladeDaten();
 const e = d.einstellungen;
 const start = `${e.datum}T${e.beginn || '09:00'}:00+02:00`;
 const anzahl = (k: string) => d.spieler.filter((s: any) => s.konkurrenz === k).length;

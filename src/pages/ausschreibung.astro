@@ -4,7 +4,7 @@ import Kopf from '../components/Kopf.astro';
 import { ladeDaten } from '../lib/store.js';
 import { ZAEHLWEISEN } from '../lib/tennis.js';
 import { datumLang, datumZeit, absaetze } from '../lib/format.js';
-const d = ladeDaten();
+const d = await ladeDaten();
 const e = d.einstellungen;
 ---
 <Base title="Ausschreibung" aktiv="/ausschreibung">

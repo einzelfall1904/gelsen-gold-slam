@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Kopf from '../components/Kopf.astro';
 import { ladeDaten, oeffentlich } from '../lib/store.js';
-const d = oeffentlich(ladeDaten());
+const d = oeffentlich(await ladeDaten());
 const alben = [...new Set(d.galerie.map((g: any) => g.album || 'Turniertag'))];
 ---
 <Base title="Galerie" aktiv="/galerie">
