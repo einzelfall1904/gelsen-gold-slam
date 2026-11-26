@@ -1,0 +1,106 @@
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/archivo/wdth-italic.css';
+
+/* Farben angelehnt an die TGG-Website (TG Gold-Weiß Gelsenkirchen) */
+:root {
+  --navy: #13263A;
+  --navy-deep: #0A1622;
+  --navy-soft: #1D3A55;
+  --gold: #C9A456;
+  --gold-bright: #F2BC3C; /* Gold aus dem Turnierlogo */
+  --gold-soft: #F6EEDC;
+  --ink: #0E1A24;
+  --ink-2: #4A5866;
+  --line: #E3E0D8;
+  --bg: #FFFFFF;
+  --bg-2: #F7F5F0;
+  --clay: #C4673E; /* Asche */
+  --live: #D6402B;
+  --ok: #2F7D4F;
+  --radius: 12px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(10, 22, 34, .06), 0 6px 20px rgba(10, 22, 34, .06);
+  --wrap: 1120px;
+  --font: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  overflow-x: hidden;
+}
+img, video { max-width: 100%; display: block; }
+a { color: var(--navy-soft); text-underline-offset: 3px; }
+a:hover { color: var(--navy); }
+:focus-visible { outline: 3px solid var(--gold-bright); outline-offset: 2px; border-radius: 4px; }
+
+h1, h2, h3 { line-height: 1.1; margin: 0 0 .5em; font-stretch: 85%; letter-spacing: -.01em; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.6rem); font-weight: 850; }
+h2 { font-size: clamp(1.6rem, 3.4vw, 2.3rem); font-weight: 800; }
+h3 { font-size: 1.15rem; font-weight: 700; font-stretch: 95%; }
+p { margin: 0 0 1em; }
+
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; }
+@media (min-width: 720px) { .wrap { padding: 0 28px; } }
+
+.eyebrow {
+  display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: .6rem;
+}
+.section { padding: 56px 0; }
+.section--alt { background: var(--bg-2); }
+.section--navy { background: var(--navy); color: #fff; }
+.section--navy a { color: var(--gold-bright); }
+.lead { font-size: 1.12rem; color: var(--ink-2); max-width: 62ch; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  min-height: 46px; padding: .7em 1.25em; border-radius: var(--radius-sm);
+  font: inherit; font-weight: 700; text-decoration: none; cursor: pointer;
+  border: 0; transition: background .15s, transform .15s;
+}
+.btn:active { transform: translateY(1px); }
+.btn--gold { background: var(--gold-bright); color: var(--navy-deep); }
+.btn--gold:hover { background: #ffcb52; color: var(--navy-deep); }
+.btn--navy { background: var(--navy-deep); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+.btn--navy:hover { background: var(--navy-soft); color: #fff; }
+.btn--ghost { background: transparent; color: var(--navy); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn--ghost:hover { box-shadow: inset 0 0 0 1.5px var(--navy); color: var(--navy); }
+.btn--sm { min-height: 36px; padding: .4em .9em; font-size: .9rem; }
+
+/* Karten */
+.card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.grid { display: grid; gap: 16px; }
+@media (min-width: 640px) { .grid--2 { grid-template-columns: repeat(2, 1fr); } .grid--3 { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 960px) { .grid--3 { grid-template-columns: repeat(3, 1fr); } }
+
+/* Tabellen mit Fakten */
+.facts { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; border-top: 1px solid var(--line); }
+.facts dt, .facts dd { margin: 0; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.facts dt { font-weight: 700; color: var(--ink-2); padding-right: 12px; }
+
+.prose p { max-width: 68ch; }
+
+/* Status-Badges */
+.badge {
+  display: inline-flex; align-items: center; gap: .4em; font-size: .75rem; font-weight: 700;
+  padding: .25em .6em; border-radius: 999px; background: var(--bg-2); color: var(--ink-2); white-space: nowrap;
+}
+.badge--laeuft { background: #FCE8E4; color: var(--live); }
+.badge--laeuft::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: puls 1.4s infinite; }
+.badge--beendet { background: #E5F2EA; color: var(--ok); }
+.badge--aufgabe, .badge--na { background: var(--gold-soft); color: #7A5A12; }
+@keyframes puls { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .badge--laeuft::before { animation: none; } }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.muted { color: var(--ink-2); }
+.small { font-size: .88rem; }

@@ -1,0 +1,64 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import { ladeDaten } from '../lib/store.js';
+import { ZAEHLWEISEN } from '../lib/tennis.js';
+import { datumLang, datumZeit, absaetze } from '../lib/format.js';
+const d = ladeDaten();
+const e = d.einstellungen;
+---
+<Base title="Ausschreibung" aktiv="/ausschreibung">
+  <Kopf eyebrow="Ausschreibung" titel={`${e.name} ${e.jahr}`} text={`${e.turnierart} nach den Richtlinien des Westfälischen Tennis-Verbandes (WTV).`} />
+  <section class="section">
+    <div class="wrap cols">
+      <div>
+        <h2>Eckdaten</h2>
+        <dl class="facts">
+          <dt>Veranstalter</dt><dd>{e.ausrichter}</dd>
+          <dt>Datum</dt><dd>{datumLang(e.datum)}, Beginn {e.beginn} Uhr</dd>
+          <dt>Anlage</dt><dd>{e.ort}, {e.adresse}<br /><span class="muted">{e.untergrund}</span></dd>
+          <dt>Turnierart</dt><dd>{e.turnierart}</dd>
+          <dt>Meldeschluss</dt><dd>{datumZeit(e.meldeschluss)}</dd>
+          <dt>Auslosung</dt><dd>{datumZeit(e.auslosung)}</dd>
+          <dt>Startgeld</dt><dd>{e.startgeld} € zzgl. {e.dtbEntgelt} € DTB-Teilnehmerentgelt, zahlbar vor dem ersten Spiel bei der Turnierleitung</dd>
+          <dt>Zählweise</dt><dd>{ZAEHLWEISEN[e.zaehlweise as 'mtb' | 'satz']}</dd>
+          <dt>Bälle</dt><dd>{e.baelle}</dd>
+          <dt>Oberschiedsrichter</dt><dd>{e.oberschiedsrichter}<br />{e.oberschiedsrichter2}</dd>
+        </dl>
+
+        <h2 style="margin-top:40px">Konkurrenzen</h2>
+        <div class="tabelle">
+          <table>
+            <thead><tr><th>Konkurrenz</th><th>Jahrgänge</th><th>Max.</th></tr></thead>
+            <tbody>
+              {d.konkurrenzen.map((k: any) => <tr><td><strong>{k.name}</strong><br /><span class="small muted">{k.hinweis}</span></td><td>{k.jahrgaenge}</td><td>{k.max}</td></tr>)}
+            </tbody>
+          </table>
+        </div>
+
+        <h2 style="margin-top:40px">Regeln &amp; Teilnahme</h2>
+        <div class="prose">{absaetze(e.regeln).map((p) => <p>{p}</p>)}</div>
+
+        <h2 style="margin-top:40px">Fotos &amp; Datenschutz</h2>
+        <div class="prose">{absaetze(e.hinweisFotos).map((p) => <p>{p}</p>)}</div>
+      </div>
+      <aside>
+        <div class="card sticky">
+          <h3>Jetzt melden</h3>
+          <p class="small">Die Anmeldung läuft ausschließlich über tennis.de. Du brauchst dafür eine ID-Nummer, eine LK und eine tennis.de-Lizenz.</p>
+          <a class="btn btn--gold" style="width:100%" href={e.tennisdeUrl} target="_blank" rel="noopener">Zur Anmeldung auf tennis.de</a>
+          <p class="small muted" style="margin:12px 0 0">Meldeschluss: {datumZeit(e.meldeschluss)}</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</Base>
+<style>
+  .cols { display: grid; gap: 32px; }
+  @media (min-width: 960px) { .cols { grid-template-columns: 1fr 320px; } }
+  .sticky { position: sticky; top: 90px; border-top: 4px solid var(--gold); }
+  .tabelle { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 12px 10px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+</style>

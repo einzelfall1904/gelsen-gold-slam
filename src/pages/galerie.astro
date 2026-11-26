@@ -1,0 +1,39 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import { ladeDaten, oeffentlich } from '../lib/store.js';
+const d = oeffentlich(ladeDaten());
+const alben = [...new Set(d.galerie.map((g: any) => g.album || 'Turniertag'))];
+---
+<Base title="Galerie" aktiv="/galerie">
+  <Kopf eyebrow="Galerie" titel="Bilder vom Turnier" text="Eindrücke von den Plätzen, den Matches und der Siegerehrung." />
+  <section class="section">
+    <div class="wrap">
+      {d.galerie.length === 0 ? (
+        <div class="leer">
+          <img src="/media/logo-192.png" alt="" width="96" height="96" />
+          <h2>Die Fotos folgen nach dem Turnier</h2>
+          <p class="muted">Nach dem {d.einstellungen.name} findet ihr hier die schönsten Bilder des Tages. Schaut gern wieder vorbei!</p>
+          <a class="btn btn--ghost" href="/ablauf">Zum Ablauf des Turniertags</a>
+        </div>
+      ) : alben.map((album) => (
+        <section class="album">
+          <h2>{album}</h2>
+          <ul class="bilder">
+            {d.galerie.filter((g: any) => (g.album || 'Turniertag') === album).map((g: any) => (
+              <li><a href={g.datei} target="_blank" rel="noopener"><img src={g.datei} alt={g.titel || 'Foto vom Turnier'} loading="lazy" /></a>{g.titel && <span>{g.titel}</span>}</li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  </section>
+</Base>
+<style>
+  .leer { text-align: center; max-width: 520px; margin: 0 auto; padding: 40px 0; }
+  .leer img { margin: 0 auto 16px; }
+  .album + .album { margin-top: 40px; }
+  .bilder { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .bilder img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); }
+  .bilder span { display: block; font-size: .85rem; color: var(--ink-2); margin-top: 6px; }
+</style>

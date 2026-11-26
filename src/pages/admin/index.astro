@@ -1,0 +1,559 @@
+---
+import '../../styles/global.css';
+import { istAngemeldet, PASSWORT } from '../../lib/auth.js';
+const angemeldet = istAngemeldet(Astro.cookies);
+const fehler = Astro.url.searchParams.has('fehler');
+const standardPasswort = !process.env.ADMIN_PASSWORT;
+---
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Turnierleitung – Gelsen Gold Slam</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+</head>
+<body class="admin">
+  <header class="a-head">
+    <a href="/" class="a-brand"><img src="/media/logo-192.png" alt="" width="36" height="36" /><span>Turnierleitung</span></a>
+    {angemeldet && (
+      <div class="a-head-r">
+        <a class="btn btn--sm btn--navy" href="/live" target="_blank">Live-Stand ansehen</a>
+        <form method="post" action="/api/login"><input type="hidden" name="aktion" value="abmelden" /><button class="btn btn--sm btn--navy">Abmelden</button></form>
+      </div>
+    )}
+  </header>
+
+  {!angemeldet ? (
+    <main class="login">
+      <form method="post" action="/api/login" class="card">
+        <img src="/media/logo.webp" alt="Gelsen Gold Slam" width="160" height="151" />
+        <h1>Anmelden</h1>
+        <p class="muted small">Nur für die Turnierleitung.</p>
+        <label for="pw">Passwort</label>
+        <input id="pw" name="passwort" type="password" autocomplete="current-password" required autofocus />
+        {fehler && <p class="err" role="alert">Das Passwort stimmt nicht. Bitte noch einmal versuchen.</p>}
+        <button class="btn btn--gold" type="submit">Anmelden</button>
+        {standardPasswort && <p class="small muted">Testbetrieb – Standardpasswort: <code>{PASSWORT}</code></p>}
+      </form>
+    </main>
+  ) : (
+    <main class="app">
+      <nav class="a-tabs" aria-label="Bereiche" id="tabs">
+        <button data-tab="heute" aria-current="page">Ergebnisse</button>
+        <button data-tab="spielplan">Spielplan</button>
+        <button data-tab="spieler">Spieler</button>
+        <button data-tab="konkurrenzen">Konkurrenzen</button>
+        <button data-tab="texte">Texte &amp; Eckdaten</button>
+        <button data-tab="ablauf">Ablauf</button>
+        <button data-tab="sponsoren">Sponsoren</button>
+        <button data-tab="galerie">Galerie</button>
+      </nav>
+      <div id="inhalt" class="a-body"><p class="muted">Lade Daten …</p></div>
+      <div class="savebar" id="savebar" hidden>
+        <span id="savemsg">Ungespeicherte Änderungen</span>
+        <button class="btn btn--ghost btn--sm" id="verwerfen" type="button">Verwerfen</button>
+        <button class="btn btn--gold" id="speichern" type="button">Änderungen speichern</button>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+  )}
+
+  <script>
+    import { auswerten, STATUS, ZAEHLWEISEN, spiralPaarungen, einzelProSpieler, formatErgebnis } from '../../lib/tennis.js';
+
+    const inhalt = document.getElementById('inhalt');
+    if (inhalt) {
+      let daten: any = null;
+      let gespeichert = '';
+      let tab = (location.hash.slice(1) || 'heute');
+      let filterK = 'alle';
+      let filterS = 'offen';
+
+      const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+      const uid = (p: string) => p + Math.random().toString(36).slice(2, 9);
+      const name = (id: string) => { const s = daten.spieler.find((x: any) => x.id === id); return s ? `${s.vorname} ${s.nachname}` : '– bitte wählen –'; };
+      const kurz = (id: string) => daten.konkurrenzen.find((k: any) => k.id === id)?.kurz || id;
+      const zw = () => (daten.einstellungen.zaehlweise === 'satz' ? 'satz' : 'mtb');
+
+      function toast(text: string, fehler = false) {
+        const t = document.getElementById('toast')!;
+        t.textContent = text; t.className = 'toast zeigen' + (fehler ? ' fehler' : '');
+        clearTimeout((t as any)._t); (t as any)._t = setTimeout(() => (t.className = 'toast'), fehler ? 7000 : 2500);
+      }
+      const dirty = () => JSON.stringify(daten) !== gespeichert;
+      function updateBar() {
+        document.getElementById('savebar')!.hidden = !dirty() || tab === 'heute';
+      }
+
+      async function laden() {
+        const r = await fetch('/api/daten', { cache: 'no-store' });
+        if (r.status === 401) { location.reload(); return; }
+        daten = await r.json(); gespeichert = JSON.stringify(daten); render();
+      }
+      async function speichern(meldung = 'Gespeichert ✓') {
+        const r = await fetch('/api/daten', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(daten) });
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { toast('Du bist nicht mehr angemeldet. Bitte Seite neu laden und einloggen.', true); return false; }
+        if (!r.ok || !j.ok) { toast('Nicht gespeichert: ' + (j.fehler || ['Unbekannter Fehler']).join(' '), true); return false; }
+        daten = j.daten; gespeichert = JSON.stringify(daten); updateBar(); toast(meldung); return true;
+      }
+
+      // ---------- Hilfen zum Binden von Eingabefeldern an die Daten ----------
+      function setPfad(pfad: string, wert: any) {
+        const teile = pfad.split('.');
+        let o = daten;
+        for (let i = 0; i < teile.length - 1; i++) o = o[teile[i]];
+        o[teile[teile.length - 1]] = wert;
+      }
+      const feld = (label: string, pfad: string, wert: any, opt: { typ?: string; breit?: boolean; hilfe?: string; zeilen?: number; step?: string } = {}) => {
+        const id = 'f-' + pfad.replace(/\./g, '-');
+        const attr = `id="${id}" data-bind="${esc(pfad)}" data-typ="${opt.typ || 'text'}"`;
+        const input = opt.zeilen
+          ? `<textarea ${attr} rows="${opt.zeilen}">${esc(wert)}</textarea>`
+          : `<input ${attr} type="${opt.typ === 'number' ? 'number' : opt.typ || 'text'}" ${opt.step ? `step="${opt.step}"` : ''} inputmode="${opt.typ === 'number' ? 'decimal' : 'text'}" value="${esc(wert)}" />`;
+        return `<div class="fld${opt.breit ? ' breit' : ''}"><label for="${id}">${esc(label)}</label>${input}${opt.hilfe ? `<small>${esc(opt.hilfe)}</small>` : ''}</div>`;
+      };
+      const auswahl = (label: string, pfad: string, wert: any, optionen: [string, string][], leer = false) => {
+        const id = 'f-' + pfad.replace(/\./g, '-');
+        return `<div class="fld"><label for="${id}">${esc(label)}</label><select id="${id}" data-bind="${esc(pfad)}">${leer ? '<option value="">– bitte wählen –</option>' : ''}${optionen.map(([v, t]) => `<option value="${esc(v)}"${v === wert ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
+      };
+
+      inhalt.addEventListener('input', (ev) => {
+        const el = ev.target as HTMLInputElement;
+        const pfad = el.dataset.bind;
+        if (!pfad) return;
+        let wert: any = el.type === 'checkbox' ? el.checked : el.value;
+        if (el.dataset.typ === 'number') wert = el.value === '' ? null : Number(el.value.replace(',', '.'));
+        setPfad(pfad, wert);
+        updateBar();
+        if (el.dataset.rerender !== undefined) render();
+      });
+
+      // ---------- Bereich: Ergebnisse eintragen ----------
+      function ergebnisKarte(s: any, i: number) {
+        const r = auswerten(s, zw());
+        const satzZeilen = [0, 1, 2].map((n) => {
+          const satz = s.saetze[n] || [null, null];
+          const label = n === 2 && zw() === 'mtb' ? 'MTB' : `${n + 1}. Satz`;
+          return `<div class="satzzeile"><span>${label}</span>
+            <input aria-label="${label} ${esc(name(s.a))}" data-satz="${i}.${n}.0" type="number" inputmode="numeric" min="0" max="30" value="${satz[0] ?? ''}" />
+            <b>:</b>
+            <input aria-label="${label} ${esc(name(s.b))}" data-satz="${i}.${n}.1" type="number" inputmode="numeric" min="0" max="30" value="${satz[1] ?? ''}" /></div>`;
+        }).join('');
+        const siegerWahl = s.status === 'aufgabe' || s.status === 'na'
+          ? `<fieldset class="sieger"><legend>${s.status === 'na' ? 'Wer ist angetreten (gewinnt)?' : 'Wer gewinnt durch Aufgabe des Gegners?'}</legend>
+              <label><input type="radio" name="sg${i}" data-sieger="${i}" value="a" ${s.sieger === 'a' ? 'checked' : ''}/> ${esc(name(s.a))}</label>
+              <label><input type="radio" name="sg${i}" data-sieger="${i}" value="b" ${s.sieger === 'b' ? 'checked' : ''}/> ${esc(name(s.b))}</label></fieldset>` : '';
+        return `<article class="e-karte st-${s.status}" data-i="${i}">
+          <header><b>${esc(s.zeit)} · Platz ${esc(s.platz)}</b><span class="tag">${esc(kurz(s.konkurrenz))} · ${s.runde === 3 ? 'Zusatz' : s.runde + '. Rd.'}</span></header>
+          <div class="namen"><span>${esc(name(s.a))}</span><span class="vs">gegen</span><span>${esc(name(s.b))}</span></div>
+          <div class="status-wahl" role="group" aria-label="Status">
+            ${Object.entries(STATUS).map(([k, t]) => `<button type="button" data-status="${i}" data-wert="${k}" aria-pressed="${s.status === k}">${k === 'na' ? 'n.a.' : t}</button>`).join('')}
+          </div>
+          <div class="saetze-eingabe">${satzZeilen}</div>
+          ${siegerWahl}
+          <input class="notiz" data-notiz="${i}" placeholder="Notiz (optional, wird öffentlich angezeigt)" value="${esc(s.notiz)}" />
+          <p class="pruef ${r.ok ? 'ok' : 'warn'}">${r.ok ? (r.sieger ? `✓ Sieger: ${esc(name(r.sieger === 'a' ? s.a : s.b))}` : '✓ Eingabe gültig') : '⚠ ' + esc(r.fehler.join(' '))}</p>
+          <button class="btn btn--gold e-save" type="button" data-save="${i}" ${r.ok ? '' : 'disabled'}>Ergebnis veröffentlichen</button>
+        </article>`;
+      }
+
+      function renderHeute() {
+        // Filtern und Sortieren nach dem zuletzt veröffentlichten Stand,
+        // damit Karten beim Eintippen nicht verschwinden oder springen.
+        const alt = JSON.parse(gespeichert).spiele;
+        const st = (i: number) => alt[i]?.status ?? daten.spiele[i].status;
+        const liste = daten.spiele.map((s: any, i: number) => ({ s, i }))
+          .filter(({ s }: any) => filterK === 'alle' || s.konkurrenz === filterK)
+          .filter(({ i }: any) => filterS === 'alle' || (filterS === 'offen' ? ['geplant', 'laeuft'].includes(st(i)) : !['geplant', 'laeuft'].includes(st(i))))
+          .sort((a: any, b: any) => (st(b.i) === 'laeuft' ? 1 : 0) - (st(a.i) === 'laeuft' ? 1 : 0) || a.s.zeit.localeCompare(b.s.zeit) || a.s.platz - b.s.platz);
+        const offen = daten.spiele.filter((s: any) => ['geplant', 'laeuft'].includes(s.status)).length;
+        return `<div class="a-intro"><h1>Ergebnisse eintragen</h1>
+          <p class="muted">${offen} von ${daten.spiele.length} Spielen offen. Status wählen, Sätze eintippen, „Ergebnis veröffentlichen“ – fertig. Zuschauer sehen es nach spätestens 30 Sekunden.</p></div>
+          <div class="filter">
+            <select id="filterK" aria-label="Konkurrenz"><option value="alle">Alle Konkurrenzen</option>${daten.konkurrenzen.map((k: any) => `<option value="${esc(k.id)}" ${filterK === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>
+            <div class="seg" role="group" aria-label="Spiele filtern">${[['offen', 'Offen'], ['fertig', 'Fertig'], ['alle', 'Alle']].map(([v, t]) => `<button type="button" data-fs="${v}" aria-pressed="${filterS === v}">${t}</button>`).join('')}</div>
+          </div>
+          <div class="e-liste">${liste.length ? liste.map(({ s, i }: any) => ergebnisKarte(s, i)).join('') : '<p class="leer">Keine Spiele in dieser Auswahl.</p>'}</div>
+          <p class="small muted">Wichtig: Spätestens am Tag nach dem Turnier alle Ergebnisse zusätzlich in nuLiga eintragen – nur dort zählen sie für die LK.</p>`;
+      }
+
+      // ---------- Bereich: Spielplan ----------
+      function planWarnungen() {
+        const w: string[] = [];
+        const z = einzelProSpieler(daten.spiele);
+        for (const s of daten.spieler) {
+          if ((z[s.id] || 0) > 2) w.push(`${s.vorname} ${s.nachname} hat ${z[s.id]} Einzel – erlaubt sind höchstens 2 pro Tag.`);
+          if (!z[s.id]) w.push(`${s.vorname} ${s.nachname} hat noch kein Spiel.`);
+        }
+        const belegt: Record<string, string> = {};
+        for (const sp of daten.spiele) {
+          const k = sp.zeit + '|' + sp.platz;
+          if (belegt[k]) w.push(`Platz ${sp.platz} um ${sp.zeit} ist doppelt belegt.`);
+          belegt[k] = sp.id;
+          for (const id of [sp.a, sp.b]) {
+            const k2 = sp.zeit + '|' + id;
+            if (id && belegt[k2]) w.push(`${name(id)} hat um ${sp.zeit} zwei Spiele gleichzeitig.`);
+            belegt[k2] = sp.id;
+          }
+          if (sp.a && sp.a === sp.b) w.push(`Spiel um ${sp.zeit} auf Platz ${sp.platz}: Spieler gegen sich selbst.`);
+          if (/^U12/.test(kurz(sp.konkurrenz)) && (sp.zeit < '08:00' || sp.zeit > '21:00')) w.push(`U12-Spiel um ${sp.zeit}: erlaubt sind nur Ansetzungen von 8:00 bis 21:00 Uhr.`);
+        }
+        return [...new Set(w)];
+      }
+      function renderSpielplan() {
+        const w = planWarnungen();
+        const plaetze = Array.from({ length: Number(daten.einstellungen.plaetze) || 6 }, (_, i) => [String(i + 1), 'Platz ' + (i + 1)] as [string, string]);
+        const zeilen = daten.spiele.map((s: any, i: number) => ({ s, i })).filter(({ s }: any) => filterK === 'alle' || s.konkurrenz === filterK)
+          .sort((a: any, b: any) => a.s.zeit.localeCompare(b.s.zeit) || a.s.platz - b.s.platz)
+          .map(({ s, i }: any) => {
+            const sp = daten.spieler.filter((p: any) => p.konkurrenz === s.konkurrenz).map((p: any) => [p.id, `${p.vorname} ${p.nachname} (LK ${p.lk})`] as [string, string]);
+            return `<tr>
+              <td data-l="Zeit"><input type="time" data-bind="spiele.${i}.zeit" value="${esc(s.zeit)}" /></td>
+              <td data-l="Platz"><select data-bind="spiele.${i}.platz" data-typ="number">${plaetze.map(([v, t]) => `<option value="${v}" ${String(s.platz) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
+              <td data-l="Konk.">${esc(kurz(s.konkurrenz))}</td>
+              <td data-l="Runde"><select data-bind="spiele.${i}.runde" data-typ="number">${[1, 2, 3].map((r) => `<option value="${r}" ${s.runde === r ? 'selected' : ''}>${r === 3 ? 'Zusatz' : r + '.'}</option>`).join('')}</select></td>
+              <td data-l="Spieler A"><select data-bind="spiele.${i}.a"><option value="">–</option>${sp.map(([v, t]) => `<option value="${esc(v)}" ${s.a === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></td>
+              <td data-l="Spieler B"><select data-bind="spiele.${i}.b"><option value="">–</option>${sp.map(([v, t]) => `<option value="${esc(v)}" ${s.b === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></td>
+              <td data-l="Stand">${esc(STATUS[s.status as keyof typeof STATUS])}${s.saetze?.length ? ' · ' + esc(formatErgebnis(s)) : ''}</td>
+              <td><button type="button" class="x" data-del="spiele.${i}" aria-label="Spiel löschen">✕</button></td></tr>`;
+          }).join('');
+        return `<div class="a-intro"><h1>Spielplan</h1>
+          <p class="muted">Nach der offiziellen Auslosung in nuLiga die Paarungen hier übernehmen. Für Probeläufe kann ein Vorschlag nach dem Spiralsystem erzeugt werden.</p></div>
+          <div class="filter">
+            <select id="filterK" aria-label="Konkurrenz"><option value="alle">Alle Konkurrenzen</option>${daten.konkurrenzen.map((k: any) => `<option value="${esc(k.id)}" ${filterK === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>
+            ${filterK !== 'alle' ? `<button class="btn btn--ghost btn--sm" type="button" id="neuSpiel">+ Spiel hinzufügen</button>
+            <button class="btn btn--ghost btn--sm" type="button" id="spirale">Paarungen vorschlagen (Spiralsystem)</button>` : '<span class="small muted">Konkurrenz wählen, um Spiele hinzuzufügen.</span>'}
+          </div>
+          ${w.length ? `<div class="warnbox"><strong>Bitte prüfen (WTV-Regeln):</strong><ul>${w.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '<p class="okbox">✓ Keine Konflikte: Plätze, Zeiten und max. 2 Einzel pro Kind passen.</p>'}
+          <div class="tab-wrap"><table class="plan"><thead><tr><th>Zeit</th><th>Platz</th><th>Konk.</th><th>Runde</th><th>Spieler A</th><th>Spieler B</th><th>Stand</th><th></th></tr></thead><tbody>${zeilen}</tbody></table></div>`;
+      }
+
+      // ---------- Bereich: Spieler ----------
+      function renderSpieler() {
+        const gruppen = daten.konkurrenzen.filter((k: any) => filterK === 'alle' || k.id === filterK).map((k: any) => {
+          const liste = daten.spieler.map((s: any, i: number) => ({ s, i })).filter(({ s }: any) => s.konkurrenz === k.id);
+          return `<section class="gruppe"><h2>${esc(k.name)} <span class="muted small">(${liste.length} / max. ${k.max})</span></h2>
+            ${liste.length > k.max ? `<p class="warnbox">Mehr Spieler als ausgeschrieben (${k.max}).</p>` : ''}
+            <div class="tab-wrap"><table class="plan"><thead><tr><th>Vorname</th><th>Nachname</th><th>Verein</th><th>LK</th><th>Konkurrenz</th><th></th></tr></thead><tbody>
+            ${liste.map(({ s, i }: any) => `<tr>
+              <td data-l="Vorname"><input data-bind="spieler.${i}.vorname" value="${esc(s.vorname)}" /></td>
+              <td data-l="Nachname"><input data-bind="spieler.${i}.nachname" value="${esc(s.nachname)}" /></td>
+              <td data-l="Verein"><input data-bind="spieler.${i}.verein" value="${esc(s.verein)}" /></td>
+              <td data-l="LK"><input class="lk" data-bind="spieler.${i}.lk" data-typ="number" type="number" step="0.1" min="1" max="25" value="${esc(s.lk)}" /></td>
+              <td data-l="Konkurrenz"><select data-bind="spieler.${i}.konkurrenz" data-rerender>${daten.konkurrenzen.map((kk: any) => `<option value="${esc(kk.id)}" ${kk.id === s.konkurrenz ? 'selected' : ''}>${esc(kk.kurz)}</option>`).join('')}</select></td>
+              <td><button type="button" class="x" data-del="spieler.${i}" aria-label="Spieler löschen">✕</button></td></tr>`).join('')}
+            </tbody></table></div>
+            <button class="btn btn--ghost btn--sm" type="button" data-neuspieler="${esc(k.id)}">+ Spieler in ${esc(k.kurz)}</button></section>`;
+        }).join('');
+        return `<div class="a-intro"><h1>Spieler</h1><p class="muted">Teilnehmer aus der Zulassungsliste in nuLiga übernehmen. Die LK bestimmt die Reihenfolge im Spiralsystem.</p></div>
+          <div class="filter"><select id="filterK" aria-label="Konkurrenz"><option value="alle">Alle Konkurrenzen</option>${daten.konkurrenzen.map((k: any) => `<option value="${esc(k.id)}" ${filterK === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></div>${gruppen}`;
+      }
+
+      // ---------- Bereich: Konkurrenzen ----------
+      function renderKonkurrenzen() {
+        return `<div class="a-intro"><h1>Konkurrenzen</h1><p class="muted">Bezeichnungen, Jahrgänge und Feldgrößen wie in der Ausschreibung.</p></div>
+          <div class="karten">${daten.konkurrenzen.map((k: any, i: number) => `<div class="card form">
+            ${feld('Name', `konkurrenzen.${i}.name`, k.name)}${feld('Kurzform', `konkurrenzen.${i}.kurz`, k.kurz)}
+            ${feld('Jahrgänge', `konkurrenzen.${i}.jahrgaenge`, k.jahrgaenge)}${feld('Max. Teilnehmer', `konkurrenzen.${i}.max`, k.max, { typ: 'number' })}
+            ${feld('Hinweis zur Zulassung', `konkurrenzen.${i}.hinweis`, k.hinweis, { breit: true })}</div>`).join('')}</div>`;
+      }
+
+      // ---------- Bereich: Texte & Eckdaten ----------
+      function renderTexte() {
+        const e = daten.einstellungen, p = 'einstellungen.';
+        return `<div class="a-intro"><h1>Texte &amp; Eckdaten</h1><p class="muted">Absätze durch eine Leerzeile trennen.</p></div>
+          <div class="card form"><h2>Turnier</h2>
+            ${feld('Name', p + 'name', e.name)}${feld('Jahr', p + 'jahr', e.jahr)}
+            ${feld('Untertitel', p + 'untertitel', e.untertitel, { breit: true })}${feld('Turnierart', p + 'turnierart', e.turnierart, { breit: true })}
+            ${feld('Datum', p + 'datum', e.datum, { typ: 'date' })}${feld('Beginn', p + 'beginn', e.beginn, { typ: 'time' })}
+            ${feld('Meldeschluss', p + 'meldeschluss', e.meldeschluss, { typ: 'datetime-local' })}${feld('Auslosung', p + 'auslosung', e.auslosung, { typ: 'datetime-local', hilfe: 'Mind. 24 Std. zwischen Veröffentlichung der Spieltermine und Turnierbeginn.' })}
+            ${feld('Startgeld (€)', p + 'startgeld', e.startgeld, { hilfe: 'WTV: Jugend draußen max. 35 €' })}${feld('DTB-Teilnehmerentgelt (€)', p + 'dtbEntgelt', e.dtbEntgelt, { hilfe: 'Jugend Einzel: 3 €' })}
+            ${auswahl('Zählweise', p + 'zaehlweise', e.zaehlweise, Object.entries(ZAEHLWEISEN) as [string, string][])}
+            ${feld('Bälle', p + 'baelle', e.baelle)}${feld('Anzahl Plätze', p + 'plaetze', e.plaetze, { typ: 'number' })}
+            ${feld('Oberschiedsrichter', p + 'oberschiedsrichter', e.oberschiedsrichter)}${feld('Vertretung', p + 'oberschiedsrichter2', e.oberschiedsrichter2)}
+          </div>
+          <div class="card form"><h2>Ort &amp; Kontakt</h2>
+            ${feld('Anlage', p + 'ort', e.ort)}${feld('Adresse', p + 'adresse', e.adresse)}${feld('Plätze/Belag', p + 'untergrund', e.untergrund)}${feld('Ausrichter', p + 'ausrichter', e.ausrichter)}
+            ${feld('Ansprechpartner', p + 'kontaktName', e.kontaktName)}${feld('E-Mail', p + 'kontaktEmail', e.kontaktEmail, { typ: 'email' })}${feld('Telefon', p + 'kontaktTelefon', e.kontaktTelefon, { typ: 'tel' })}
+            ${feld('Link Anmeldung (tennis.de)', p + 'tennisdeUrl', e.tennisdeUrl, { typ: 'url', breit: true })}${feld('Link nuLiga-Turnierseite', p + 'nuligaUrl', e.nuligaUrl, { typ: 'url', breit: true })}
+          </div>
+          <div class="card form"><h2>Texte</h2>
+            ${feld('Begrüßung (Startseite)', p + 'begruessung', e.begruessung, { zeilen: 6, breit: true })}
+            ${feld('Regeln & Teilnahme (Ausschreibung)', p + 'regeln', e.regeln, { zeilen: 10, breit: true })}
+            ${feld('Hinweis Fotos', p + 'hinweisFotos', e.hinweisFotos, { zeilen: 4, breit: true })}
+            ${feld('Anfahrt', p + 'anfahrt', e.anfahrt, { zeilen: 4, breit: true })}
+            ${feld('Verpflegung', p + 'verpflegung', e.verpflegung, { zeilen: 3, breit: true })}
+            ${feld('Impressum', p + 'impressum', e.impressum, { zeilen: 8, breit: true })}
+          </div>
+          <div class="card danger"><h2>Testdaten</h2><p class="small">Setzt alle Inhalte auf die Beispieldaten zurück. Hochgeladene Bilder bleiben auf der Festplatte.</p>
+            <button class="btn btn--ghost btn--sm" type="button" id="reset">Beispieldaten wiederherstellen</button></div>`;
+      }
+
+      // ---------- Bereich: Ablauf ----------
+      function renderAblauf() {
+        return `<div class="a-intro"><h1>Ablauf</h1><p class="muted">Zeitplan des Turniertags auf der Seite „Ablauf“.</p></div>
+          ${daten.ablauf.map((a: any, i: number) => `<div class="card form zeile3">${feld('Uhrzeit', `ablauf.${i}.zeit`, a.zeit, { typ: 'time' })}${feld('Titel', `ablauf.${i}.titel`, a.titel)}${feld('Text', `ablauf.${i}.text`, a.text, { breit: true })}
+            <button type="button" class="x" data-del="ablauf.${i}" aria-label="Punkt löschen">✕</button></div>`).join('')}
+          <button class="btn btn--ghost btn--sm" type="button" id="neuAblauf">+ Programmpunkt</button>`;
+      }
+
+      // ---------- Bereich: Sponsoren ----------
+      function renderSponsoren() {
+        return `<div class="a-intro"><h1>Sponsoren</h1><p class="muted">Logo am besten als PNG mit transparentem Hintergrund oder SVG.</p></div>
+          ${daten.sponsoren.map((s: any, i: number) => `<div class="card form zeile3">
+            <div class="logo-prev">${s.logo ? `<img src="${esc(s.logo)}" alt="" />` : '<span>kein Logo</span>'}<label class="btn btn--ghost btn--sm">Logo hochladen<input type="file" accept="image/*" data-upload="sponsoren.${i}.logo" hidden /></label></div>
+            ${feld('Name', `sponsoren.${i}.name`, s.name)}${feld('Website', `sponsoren.${i}.url`, s.url, { typ: 'url' })}
+            ${auswahl('Stufe', `sponsoren.${i}.stufe`, s.stufe, [['haupt', 'Hauptsponsor'], ['partner', 'Partner']])}
+            <button type="button" class="x" data-del="sponsoren.${i}" aria-label="Sponsor löschen">✕</button></div>`).join('')}
+          <button class="btn btn--ghost btn--sm" type="button" id="neuSponsor">+ Sponsor</button>`;
+      }
+
+      // ---------- Bereich: Galerie ----------
+      function renderGalerie() {
+        return `<div class="a-intro"><h1>Galerie</h1><p class="muted">Fotos erscheinen nur, wenn „Einverständnis liegt vor“ angehakt ist – bei Kindern das der Eltern.</p></div>
+          <label class="btn btn--gold">Fotos hochladen<input type="file" accept="image/*" multiple id="fotoUpload" hidden /></label>
+          <div class="fotos">${daten.galerie.map((g: any, i: number) => `<div class="card foto">
+            <img src="${esc(g.datei)}" alt="" />
+            ${feld('Bildunterschrift', `galerie.${i}.titel`, g.titel)}${feld('Album', `galerie.${i}.album`, g.album)}
+            <label class="check"><input type="checkbox" data-bind="galerie.${i}.einverstaendnis" ${g.einverstaendnis ? 'checked' : ''}/> Einverständnis liegt vor</label>
+            <button type="button" class="x" data-del="galerie.${i}" aria-label="Foto entfernen">✕</button></div>`).join('') || '<p class="leer">Noch keine Fotos.</p>'}</div>`;
+      }
+
+      const BEREICHE: Record<string, () => string> = { heute: renderHeute, spielplan: renderSpielplan, spieler: renderSpieler, konkurrenzen: renderKonkurrenzen, texte: renderTexte, ablauf: renderAblauf, sponsoren: renderSponsoren, galerie: renderGalerie };
+      function render() {
+        if (!BEREICHE[tab]) tab = 'heute';
+        const y = scrollY;
+        inhalt!.innerHTML = BEREICHE[tab]();
+        scrollTo(0, y);
+        document.querySelectorAll<HTMLButtonElement>('#tabs button').forEach((b) => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
+        updateBar();
+      }
+
+      // ---------- Ereignisse ----------
+      document.getElementById('tabs')!.addEventListener('click', (ev) => {
+        const b = (ev.target as HTMLElement).closest('button'); if (!b) return;
+        if (tab === 'heute' && b.dataset.tab !== 'heute' && dirty()) { daten = JSON.parse(gespeichert); }
+        tab = b.dataset.tab!; history.replaceState(null, '', '#' + tab); render(); scrollTo(0, 0);
+      });
+      document.getElementById('speichern')!.addEventListener('click', () => speichern().then((ok) => ok && render()));
+      document.getElementById('verwerfen')!.addEventListener('click', () => { daten = JSON.parse(gespeichert); render(); });
+      addEventListener('beforeunload', (ev) => { if (dirty() && tab !== 'heute') ev.preventDefault(); });
+
+      inhalt.addEventListener('change', async (ev) => {
+        const el = ev.target as HTMLInputElement;
+        if (el.id === 'filterK') { filterK = el.value; render(); return; }
+        if (el.dataset.sieger) { daten.spiele[+el.dataset.sieger].sieger = el.value; render(); return; }
+        if (el.dataset.notiz) { daten.spiele[+el.dataset.notiz].notiz = el.value; return; }
+        if (el.dataset.upload || el.id === 'fotoUpload') {
+          for (const datei of Array.from(el.files || [])) {
+            const fd = new FormData(); fd.append('datei', datei);
+            const r = await fetch('/api/upload', { method: 'POST', body: fd });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) { toast(j.fehler || 'Upload fehlgeschlagen.', true); continue; }
+            if (el.dataset.upload) setPfad(el.dataset.upload, j.url);
+            else daten.galerie.push({ id: uid('g'), datei: j.url, titel: '', album: 'Turniertag', einverstaendnis: false });
+          }
+          toast('Hochgeladen – bitte noch „Änderungen speichern“.'); render();
+          return;
+        }
+        if (el.dataset.bind && el.tagName === 'SELECT' && tab === 'spielplan') render();
+      });
+
+      inhalt.addEventListener('input', (ev) => {
+        const el = ev.target as HTMLInputElement;
+        if (!el.dataset.satz) return;
+        const [i, n, seite] = el.dataset.satz.split('.').map(Number);
+        const sp = daten.spiele[i];
+        while (sp.saetze.length <= n) sp.saetze.push([null, null]);
+        sp.saetze[n][seite] = el.value === '' ? null : Number(el.value);
+        // leere Sätze am Ende entfernen
+        while (sp.saetze.length && sp.saetze[sp.saetze.length - 1].every((v: any) => v === null)) sp.saetze.pop();
+        // nur Prüfhinweis + Button der Karte aktualisieren, Fokus bleibt im Feld
+        const karte = el.closest('.e-karte')!;
+        const r = auswerten(sp, zw());
+        const p = karte.querySelector('.pruef')!;
+        p.className = 'pruef ' + (r.ok ? 'ok' : 'warn');
+        p.textContent = r.ok ? (r.sieger ? `✓ Sieger: ${name(r.sieger === 'a' ? sp.a : sp.b)}` : '✓ Eingabe gültig') : '⚠ ' + r.fehler.join(' ');
+        (karte.querySelector('.e-save') as HTMLButtonElement).disabled = !r.ok;
+      });
+
+      inhalt.addEventListener('click', async (ev) => {
+        const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
+        if (!b) return;
+        if (b.dataset.status) {
+          const sp = daten.spiele[+b.dataset.status]; sp.status = b.dataset.wert;
+          if (!['aufgabe', 'na'].includes(sp.status)) sp.sieger = null;
+          if (sp.status === 'beendet') { const r = auswerten(sp, zw()); if (r.sieger) sp.sieger = r.sieger; }
+          render(); return;
+        }
+        if (b.dataset.save) {
+          const sp = daten.spiele[+b.dataset.save];
+          if (sp.status === 'geplant' && sp.saetze.length) sp.status = 'laeuft';
+          const neuerStand = JSON.parse(JSON.stringify(daten));
+          // Nur dieses Spiel übernehmen – andere ungespeicherte Ergebnis-Eingaben bleiben lokal
+          const basis = JSON.parse(gespeichert);
+          basis.spiele[+b.dataset.save] = neuerStand.spiele[+b.dataset.save];
+          const lokal = daten; daten = basis;
+          const ok = await speichern(`Veröffentlicht: ${name(sp.a)} – ${name(sp.b)}`);
+          if (!ok) daten = lokal; else {
+            // offene Eingaben anderer Karten wieder einsetzen
+            lokal.spiele.forEach((s: any, i: number) => { if (i !== +b.dataset.save!) daten.spiele[i] = s; });
+          }
+          render(); return;
+        }
+        if (b.dataset.fs) { filterS = b.dataset.fs; render(); return; }
+        if (b.dataset.del) {
+          const [liste, idx] = b.dataset.del.split('.');
+          const was = { spiele: 'dieses Spiel', spieler: 'diesen Spieler', ablauf: 'diesen Programmpunkt', sponsoren: 'diesen Sponsor', galerie: 'dieses Foto' }[liste] || 'diesen Eintrag';
+          if (liste === 'spieler') {
+            const id = daten.spieler[+idx].id;
+            const n = daten.spiele.filter((s: any) => s.a === id || s.b === id).length;
+            if (!confirm(`${name(id)} löschen?${n ? ` Er/sie steht in ${n} Spiel(en) – dort wird der Platz leer.` : ''}`)) return;
+            daten.spiele.forEach((s: any) => { if (s.a === id) s.a = ''; if (s.b === id) s.b = ''; });
+          } else if (!confirm(`Wirklich ${was} löschen?`)) return;
+          daten[liste].splice(+idx, 1); render(); return;
+        }
+        if (b.dataset.neuspieler) { daten.spieler.push({ id: uid('p'), vorname: '', nachname: '', verein: '', lk: 25, konkurrenz: b.dataset.neuspieler }); render(); return; }
+        if (b.id === 'neuSpiel') { daten.spiele.push({ id: uid('m'), konkurrenz: filterK, runde: 1, zeit: '09:00', platz: 1, a: '', b: '', status: 'geplant', saetze: [], sieger: null, notiz: '' }); render(); return; }
+        if (b.id === 'neuAblauf') { daten.ablauf.push({ zeit: '12:00', titel: '', text: '' }); render(); return; }
+        if (b.id === 'neuSponsor') { daten.sponsoren.push({ id: uid('s'), name: 'Neuer Sponsor', url: '', stufe: 'partner', logo: '' }); render(); return; }
+        if (b.id === 'spirale') {
+          const vorhandene = daten.spiele.filter((s: any) => s.konkurrenz === filterK);
+          if (vorhandene.some((s: any) => s.status !== 'geplant')) { toast('In dieser Konkurrenz gibt es schon Ergebnisse – Vorschlag nicht möglich.', true); return; }
+          if (vorhandene.length && !confirm(`Die ${vorhandene.length} vorhandenen Spiele dieser Konkurrenz werden ersetzt. Fortfahren?`)) return;
+          const spieler = daten.spieler.filter((s: any) => s.konkurrenz === filterK);
+          if (spieler.length < 3) { toast('Mindestens 3 Spieler nötig (WTV).', true); return; }
+          daten.spiele = daten.spiele.filter((s: any) => s.konkurrenz !== filterK);
+          // Freien Platz zur Rundenzeit suchen, sonst 90 Minuten später
+          const anzahlPlaetze = Number(daten.einstellungen.plaetze) || 6;
+          const plus90 = (t: string) => { const [h, m] = t.split(':').map(Number); const x = h * 60 + m + 90; return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
+          const frei = (zeit: string, platz: number, a: string, bb: string) => !daten.spiele.some((s: any) => s.zeit === zeit && (s.platz === platz || [s.a, s.b].includes(a) || [s.a, s.b].includes(bb)));
+          for (const p of spiralPaarungen(spieler)) {
+            let zeit = p.runde === 1 ? '09:00' : p.runde === 2 ? '13:30' : '18:00';
+            let platz = 0;
+            for (let versuch = 0; versuch < 6 && !platz; versuch++) {
+              for (let pl = 1; pl <= anzahlPlaetze; pl++) if (frei(zeit, pl, p.a, p.b)) { platz = pl; break; }
+              if (!platz) zeit = plus90(zeit);
+            }
+            daten.spiele.push({ id: uid('m'), konkurrenz: filterK, runde: p.runde, zeit, platz: platz || 1, a: p.a, b: p.b, status: 'geplant', saetze: [], sieger: null, notiz: '' });
+          }
+          toast('Vorschlag erstellt – bitte Zeiten und Plätze anpassen und speichern.'); render(); return;
+        }
+        if (b.id === 'reset') {
+          if (!confirm('Alle Inhalte auf die Beispieldaten zurücksetzen? Das kann nicht rückgängig gemacht werden.')) return;
+          const r = await fetch('/api/reset', { method: 'POST' });
+          if (r.ok) { daten = await r.json(); gespeichert = JSON.stringify(daten); toast('Beispieldaten wiederhergestellt.'); render(); }
+          return;
+        }
+      });
+
+      laden();
+    }
+  </script>
+
+  <style is:global>
+    body.admin { background: var(--bg-2); min-height: 100vh; }
+    .a-head { background: var(--navy-deep); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 30; }
+    .a-brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 800; }
+    .a-head-r { display: flex; gap: 8px; }
+    .a-head-r form { margin: 0; }
+    @media (max-width: 520px) { .a-head-r a { display: none; } }
+    .login { display: grid; place-items: center; padding: 40px 16px; }
+    .login form { width: min(380px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: center; }
+    .login img { margin: 0 auto; }
+    .login label { text-align: left; font-weight: 700; }
+    .login input { font: inherit; padding: 12px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); }
+    .err { color: var(--live); margin: 0; }
+    .a-tabs { display: flex; gap: 4px; overflow-x: auto; background: var(--navy); padding: 8px 16px 0; scrollbar-width: none; position: sticky; top: 58px; z-index: 25; }
+    .a-tabs button { flex: 0 0 auto; background: none; border: 0; color: #DCE3EA; font: inherit; font-weight: 700; padding: 10px 14px; border-radius: 10px 10px 0 0; cursor: pointer; }
+    .a-tabs button[aria-current='page'] { background: var(--bg-2); color: var(--navy); }
+    .a-body { max-width: 1180px; margin: 0 auto; padding: 24px 16px 120px; }
+    .a-intro h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    .filter { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+    select, .a-body input, .a-body textarea { font: inherit; padding: 9px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); min-width: 0; }
+    .a-body textarea { width: 100%; resize: vertical; }
+    .seg { display: inline-flex; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 3px; }
+    .seg button { border: 0; background: none; font: inherit; font-weight: 600; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+    .seg button[aria-pressed='true'] { background: var(--navy); color: #fff; }
+    .e-liste { display: grid; gap: 14px; margin-bottom: 24px; }
+    @media (min-width: 760px) { .e-liste { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1100px) { .e-liste { grid-template-columns: repeat(3, 1fr); } }
+    .e-karte { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .e-karte.st-laeuft { border-color: #F0B7AC; box-shadow: 0 0 0 3px #FCE8E4; }
+    .e-karte.st-beendet { opacity: .9; }
+    .e-karte header { display: flex; justify-content: space-between; font-size: .9rem; }
+    .tag { background: var(--navy); color: var(--gold-bright); font-size: .75rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; }
+    .namen { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; font-weight: 700; }
+    .namen span:last-child { text-align: right; }
+    .vs { font-size: .75rem; color: var(--ink-2); font-weight: 500; }
+    .status-wahl { display: flex; flex-wrap: wrap; gap: 4px; }
+    .status-wahl button { flex: 1 1 auto; font: inherit; font-size: .8rem; font-weight: 700; padding: 8px 6px; min-height: 40px; border: 1.5px solid var(--line); background: #fff; border-radius: 8px; cursor: pointer; }
+    .status-wahl button[aria-pressed='true'] { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .status-wahl button[data-wert='laeuft'][aria-pressed='true'] { background: var(--live); border-color: var(--live); }
+    .status-wahl button[data-wert='beendet'][aria-pressed='true'] { background: var(--ok); border-color: var(--ok); }
+    .saetze-eingabe { display: grid; gap: 6px; }
+    .satzzeile { display: grid; grid-template-columns: 70px 1fr auto 1fr; gap: 8px; align-items: center; }
+    .satzzeile span { font-size: .8rem; color: var(--ink-2); font-weight: 600; }
+    .satzzeile input { text-align: center; font-size: 1.2rem; font-weight: 700; padding: 8px; width: 100%; }
+    .sieger { border: 1px solid var(--gold); border-radius: 8px; padding: 8px 12px; margin: 0; background: var(--gold-soft); }
+    .sieger legend { font-size: .8rem; font-weight: 700; padding: 0 4px; }
+    .sieger label { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+    .notiz { width: 100%; font-size: .9rem !important; }
+    .pruef { margin: 0; font-size: .85rem; }
+    .pruef.ok { color: var(--ok); }
+    .pruef.warn { color: var(--live); }
+    .e-save:disabled { opacity: .45; cursor: not-allowed; }
+    .tab-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 12px; }
+    .plan { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    .plan th, .plan td { padding: 8px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .plan th { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); background: var(--bg-2); }
+    .plan input { width: 100%; min-width: 90px; }
+    .plan input.lk { min-width: 70px; width: 80px; }
+    @media (max-width: 760px) {
+      .plan thead { display: none; }
+      .plan tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; padding: 12px; border-bottom: 1px solid var(--line); position: relative; }
+      .plan td { border: 0; padding: 0; white-space: normal; display: flex; flex-direction: column; gap: 2px; }
+      .plan td[data-l]::before { content: attr(data-l); font-size: .72rem; font-weight: 700; color: var(--ink-2); text-transform: uppercase; }
+      .plan td:last-child { position: absolute; top: 6px; right: 6px; }
+      .plan select, .plan input { width: 100%; }
+    }
+    .x { background: none; border: 0; color: var(--ink-2); font-size: 1rem; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; }
+    .x:hover { background: #FCE8E4; color: var(--live); }
+    .warnbox { background: #FFF4E5; border: 1px solid #F3C98B; color: #7A4B00; border-radius: var(--radius-sm); padding: 12px 16px; margin: 0 0 14px; }
+    .warnbox ul { margin: 6px 0 0; padding-left: 18px; }
+    .okbox { background: #E5F2EA; color: var(--ok); border-radius: var(--radius-sm); padding: 10px 14px; }
+    .gruppe { margin-bottom: 28px; }
+    .gruppe h2 { font-size: 1.25rem; }
+    .card.form { display: grid; gap: 12px; grid-template-columns: 1fr; margin-bottom: 14px; position: relative; }
+    @media (min-width: 720px) { .card.form { grid-template-columns: 1fr 1fr; } }
+    .card.form h2 { grid-column: 1 / -1; font-size: 1.2rem; margin: 0; }
+    .fld { display: flex; flex-direction: column; gap: 4px; }
+    .fld.breit { grid-column: 1 / -1; }
+    .fld label { font-weight: 700; font-size: .85rem; }
+    .fld small { color: var(--ink-2); font-size: .78rem; }
+    .zeile3 { padding-right: 48px; }
+    .zeile3 > .x { position: absolute; top: 8px; right: 8px; }
+    .karten { display: grid; gap: 0; }
+    .logo-prev { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+    .logo-prev img { max-height: 56px; max-width: 160px; object-fit: contain; }
+    .logo-prev span { font-size: .85rem; color: var(--ink-2); }
+    .fotos { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 16px; }
+    .foto { position: relative; display: flex; flex-direction: column; gap: 8px; }
+    .foto img { aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; width: 100%; }
+    .foto > .x { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.9); }
+    .check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+    .danger { margin-top: 24px; border-color: #F0B7AC; }
+    .leer { padding: 20px; background: #fff; border-radius: var(--radius); color: var(--ink-2); }
+    .savebar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--navy-deep); color: #fff; display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 16px; z-index: 40; box-shadow: 0 -6px 20px rgba(0,0,0,.2); }
+    .savebar[hidden] { display: none; }
+    .savebar span { margin-right: auto; font-weight: 600; }
+    .savebar .btn--ghost { color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.4); }
+    .toast { position: fixed; left: 50%; bottom: 84px; transform: translate(-50%, 20px); background: var(--ok); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; opacity: 0; pointer-events: none; transition: all .2s; z-index: 60; max-width: min(92vw, 560px); }
+    .toast.zeigen { opacity: 1; transform: translate(-50%, 0); }
+    .toast.fehler { background: var(--live); }
+  </style>
+</body>
+</html>

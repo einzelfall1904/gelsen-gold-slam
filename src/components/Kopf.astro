@@ -1,0 +1,17 @@
+---
+interface Props { eyebrow?: string; titel: string; text?: string; }
+const { eyebrow, titel, text } = Astro.props;
+---
+<section class="kopf">
+  <div class="wrap">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <h1>{titel}</h1>
+    {text && <p class="lead">{text}</p>}
+  </div>
+</section>
+<style>
+  .kopf { background: repeating-linear-gradient(115deg, rgba(255,255,255,.03) 0 26px, transparent 26px 64px), var(--navy-deep); color: #fff; padding: 44px 0 40px; }
+  .kopf .eyebrow { color: var(--gold-bright); }
+  .kopf h1 { text-transform: uppercase; font-style: italic; font-stretch: 75%; font-weight: 900; }
+  .kopf .lead { color: #C9D3DD; margin: 0; }
+</style>

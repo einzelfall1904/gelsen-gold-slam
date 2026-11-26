@@ -1,0 +1,23 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import { ladeDaten } from '../lib/store.js';
+const e = ladeDaten().einstellungen;
+---
+<Base title="Datenschutz">
+  <Kopf titel="Datenschutzerklärung" />
+  <section class="section"><div class="wrap prose">
+    <p class="hinweis">Platzhalter – vor der Veröffentlichung z. B. mit einem Generator (e-recht24) erstellen und prüfen lassen.</p>
+    <h2>1. Verantwortlicher</h2>
+    <p>{e.ausrichter}, {e.adresse}, E-Mail: {e.kontaktEmail}</p>
+    <h2>2. Aufruf dieser Website</h2>
+    <p>Beim Aufruf werden technisch notwendige Daten (z. B. IP-Adresse, Zeitpunkt, aufgerufene Seite) verarbeitet, um die Website auszuliefern. Es werden keine Analyse- oder Werbe-Cookies eingesetzt. Schriften werden lokal geladen, es werden keine Inhalte von Google eingebunden.</p>
+    <h2>3. Teilnehmerdaten</h2>
+    <p>Im Live-Stand zeigen wir Vor- und Nachname, Verein und LK der Teilnehmenden sowie die Spielergebnisse. Grundlage ist die Turnierteilnahme nach den Regeln des DTB/WTV. Die Anmeldung selbst erfolgt über tennis.de; dafür gilt die Datenschutzerklärung des DTB.</p>
+    <h2>4. Fotos von Minderjährigen</h2>
+    <p>Fotos veröffentlichen wir nur, wenn das Einverständnis der Erziehungsberechtigten vorliegt. Ein Widerruf ist jederzeit per E-Mail an {e.kontaktEmail} möglich; das Foto wird dann entfernt.</p>
+    <h2>5. Ihre Rechte</h2>
+    <p>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch sowie Beschwerde bei einer Aufsichtsbehörde (in NRW: LDI NRW).</p>
+  </div></section>
+</Base>
+<style>.hinweis { background: var(--gold-soft); padding: 12px 16px; border-radius: var(--radius-sm); color: #7A5A12; } .prose h2 { font-size: 1.3rem; margin-top: 28px; }</style>

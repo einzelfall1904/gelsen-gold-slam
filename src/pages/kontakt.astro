@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import { ladeDaten } from '../lib/store.js';
+import { absaetze } from '../lib/format.js';
+const e = ladeDaten().einstellungen;
+const karte = `https://www.openstreetmap.org/search?query=${encodeURIComponent(e.adresse)}`;
+---
+<Base title="Kontakt & Anfahrt" aktiv="/kontakt">
+  <Kopf eyebrow="Kontakt & Anfahrt" titel="So erreicht ihr uns" />
+  <section class="section">
+    <div class="wrap grid grid--2">
+      <div class="card">
+        <h2>Turnierleitung</h2>
+        <dl class="facts">
+          <dt>Ansprechpartner</dt><dd>{e.kontaktName}</dd>
+          <dt>E-Mail</dt><dd><a href={`mailto:${e.kontaktEmail}`}>{e.kontaktEmail}</a></dd>
+          {e.kontaktTelefon && <><dt>Telefon</dt><dd><a href={`tel:${e.kontaktTelefon.replace(/\s/g, '')}`}>{e.kontaktTelefon}</a></dd></>}
+          <dt>Oberschiedsrichter</dt><dd>{e.oberschiedsrichter}<br />{e.oberschiedsrichter2}</dd>
+        </dl>
+        <p class="small muted" style="margin-top:16px">Am Turniertag findet ihr die Turnierleitung im Clubhaus.</p>
+      </div>
+      <div class="card">
+        <h2>Anfahrt</h2>
+        <p><strong>{e.ort}</strong><br />{e.adresse}</p>
+        {absaetze(e.anfahrt).map((p) => <p>{p}</p>)}
+        <a class="btn btn--navy" href={karte} target="_blank" rel="noopener">Auf der Karte öffnen</a>
+      </div>
+    </div>
+  </section>
+</Base>

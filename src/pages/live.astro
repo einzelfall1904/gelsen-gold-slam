@@ -1,0 +1,211 @@
+---
+import Base from '../layouts/Base.astro';
+import { ladeDaten } from '../lib/store.js';
+import { liveDaten } from '../lib/live.js';
+
+const d = ladeDaten();
+const e = d.einstellungen;
+const json = JSON.stringify(liveDaten(d)).replace(/</g, '\\u003c');
+---
+<Base title="Live-Stand" aktiv="/live" description="Live-Ergebnisse aller Konkurrenzen des Gelsen Gold Slam.">
+  <section class="live-head">
+    <div class="wrap">
+      <p class="eyebrow">Live-Stand</p>
+      <h1>Spiele &amp; Ergebnisse</h1>
+      <p class="muted">Wird automatisch alle 30 Sekunden aktualisiert · <span id="stand">–</span></p>
+      <div class="werkzeuge">
+        <label class="suche">
+          <span class="visually-hidden">Spieler suchen</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input id="suche" type="search" placeholder="Name oder Verein suchen …" autocomplete="off" />
+        </label>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Konkurrenzen" id="tabs"></div>
+    </div>
+  </section>
+
+  <section class="section live-body">
+    <div class="wrap">
+      <div id="ausgabe" aria-live="polite"></div>
+      <p class="small muted hinweis">
+        Offizielle Auslosung, Tableaus und Ergebnisse (maßgeblich für die LK-Wertung):
+        <a href={e.nuligaUrl} target="_blank" rel="noopener">nuLiga / tennis.de</a>.
+      </p>
+    </div>
+  </section>
+
+  <script type="application/json" id="startdaten" set:html={json}></script>
+</Base>
+
+<script>
+  import { STATUS, formatErgebnis } from '../lib/tennis.js';
+
+  type Daten = any;
+  let daten: Daten = JSON.parse(document.getElementById('startdaten')!.textContent!);
+  let aktiv = location.hash.slice(1) || 'alle';
+  let suche = '';
+
+  const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+  const name = (s: any) => (s ? `${s.vorname} ${s.nachname}` : 'N. N.');
+
+  function tabs() {
+    const el = document.getElementById('tabs')!;
+    const liste = [{ id: 'alle', kurz: 'Alle' }, ...daten.konkurrenzen];
+    el.innerHTML = liste.map((k: any) => {
+      const live = k.id !== 'alle' && daten.spiele.some((s: any) => s.konkurrenz === k.id && s.status === 'laeuft');
+      return `<button role="tab" type="button" data-id="${esc(k.id)}" aria-selected="${k.id === aktiv}">${esc(k.kurz)}${live ? '<i class="dot" title="Spiel läuft"></i>' : ''}</button>`;
+    }).join('');
+  }
+
+  function spielerZeile(sp: any, seite: 'a' | 'b', spiel: any) {
+    const p = daten.spielerById[sp];
+    const gewinnt = spiel.sieger === seite;
+    const alle = spiel.saetze || [];
+    const saetze = alle.map((x: number[], idx: number) => {
+      const mein = seite === 'a' ? x[0] : x[1], anderer = seite === 'a' ? x[1] : x[0];
+      // Ein noch laufender (letzter) Satz wird nicht als gewonnen markiert
+      const offen = idx === alle.length - 1 && ['laeuft', 'aufgabe'].includes(spiel.status);
+      return `<span class="satz${!offen && mein > anderer ? ' gew' : ''}${offen ? ' offen' : ''}">${mein ?? ''}</span>`;
+    }).join('');
+    return `<div class="zeile${gewinnt ? ' sieger' : ''}">
+      <div class="person"><span class="n">${esc(name(p))}${gewinnt ? ' <span class="check" aria-label="Sieger">✓</span>' : ''}</span>
+      <span class="v">${esc(p?.verein || '')}${p?.lk ? ` · LK ${esc(String(p.lk).replace('.', ','))}` : ''}</span></div>
+      <div class="saetze">${saetze}</div></div>`;
+  }
+
+  function spielKarte(s: any) {
+    const k = daten.konkurrenzById[s.konkurrenz];
+    return `<article class="spiel status-${esc(s.status)}">
+      <header><span class="zeit">${esc(s.zeit)} Uhr · Platz ${esc(s.platz)}</span>
+      ${aktiv === 'alle' ? `<span class="k">${esc(k?.kurz)}</span>` : ''}
+      <span class="badge badge--${esc(s.status)}">${esc(STATUS[s.status as keyof typeof STATUS] || s.status)}</span></header>
+      ${spielerZeile(s.a, 'a', s)}${spielerZeile(s.b, 'b', s)}
+      ${s.notiz ? `<p class="notiz">${esc(s.notiz)}</p>` : ''}
+    </article>`;
+  }
+
+  function trifft(s: any) {
+    if (!suche) return true;
+    return [s.a, s.b].some((id) => {
+      const p = daten.spielerById[id];
+      return p && `${p.vorname} ${p.nachname} ${p.verein}`.toLowerCase().includes(suche);
+    });
+  }
+
+  function bilanz(kid: string) {
+    const spieler = daten.spieler.filter((p: any) => p.konkurrenz === kid);
+    const zeilen = spieler.map((p: any) => {
+      const sp = daten.spiele.filter((s: any) => s.a === p.id || s.b === p.id);
+      const siege = sp.filter((s: any) => (s.sieger === 'a' && s.a === p.id) || (s.sieger === 'b' && s.b === p.id)).length;
+      const fertig = sp.filter((s: any) => s.sieger).length;
+      return { p, siege, fertig, gesamt: sp.length };
+    }).sort((x: any, y: any) => (x.p.lk ?? 25) - (y.p.lk ?? 25));
+    return `<details class="bilanz"><summary>Teilnehmerliste &amp; Bilanz (${spieler.length})</summary>
+      <table><thead><tr><th>Name</th><th>Verein</th><th>LK</th><th>Siege</th></tr></thead><tbody>
+      ${zeilen.map((z: any) => `<tr><td>${esc(name(z.p))}</td><td>${esc(z.p.verein)}</td><td>${esc(String(z.p.lk ?? '').replace('.', ','))}</td><td>${z.siege} / ${z.gesamt}</td></tr>`).join('')}
+      </tbody></table></details>`;
+  }
+
+  function render() {
+    tabs();
+    const out = document.getElementById('ausgabe')!;
+    const konks = aktiv === 'alle' ? daten.konkurrenzen : daten.konkurrenzen.filter((k: any) => k.id === aktiv);
+    let html = '';
+    if (aktiv === 'alle' && !suche) {
+      const laufend = daten.spiele.filter((s: any) => s.status === 'laeuft');
+      const naechste = daten.spiele.filter((s: any) => s.status === 'geplant').sort((a: any, b: any) => a.zeit.localeCompare(b.zeit)).slice(0, 6);
+      html += `<h2>Jetzt auf dem Platz</h2>` + (laufend.length ? `<div class="spiele">${laufend.map(spielKarte).join('')}</div>` : `<p class="leer">Gerade läuft kein Spiel.</p>`);
+      if (naechste.length) html += `<h2>Als Nächstes</h2><div class="spiele">${naechste.map(spielKarte).join('')}</div>`;
+      html += `<h2>Konkurrenzen</h2><p class="muted">Wähle oben eine Konkurrenz, um alle Spiele und die Teilnehmerliste zu sehen.</p>`;
+    } else {
+      let treffer = 0;
+      for (const k of konks) {
+        const spiele = daten.spiele.filter((s: any) => s.konkurrenz === k.id && trifft(s));
+        treffer += spiele.length;
+        if (suche && !spiele.length) continue;
+        html += `<section class="konk" id="k-${esc(k.id)}"><h2>${esc(k.name)}</h2>`;
+        const runden = [...new Set(spiele.map((s: any) => s.runde))].sort();
+        for (const r of runden) {
+          const rs = spiele.filter((s: any) => s.runde === r).sort((a: any, b: any) => a.zeit.localeCompare(b.zeit) || a.platz - b.platz);
+          html += `<h3>${r === 3 ? 'Zusatzrunde' : `${r}. Runde`}</h3><div class="spiele">${rs.map(spielKarte).join('')}</div>`;
+        }
+        if (!spiele.length) html += `<p class="leer">Noch keine Spiele angesetzt. Die Paarungen erscheinen nach der Auslosung.</p>`;
+        if (!suche) html += bilanz(k.id);
+        html += `</section>`;
+      }
+      if (suche && !treffer) html = `<p class="leer">Keine Spiele für „${esc(suche)}“ gefunden. Prüfe die Schreibweise oder wähle „Alle“.</p>`;
+    }
+    out.innerHTML = html;
+    const t = new Date(daten.aktualisiert);
+    document.getElementById('stand')!.textContent = 'Stand: ' + t.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr';
+  }
+
+  document.getElementById('tabs')!.addEventListener('click', (ev) => {
+    const b = (ev.target as HTMLElement).closest('button');
+    if (!b) return;
+    aktiv = b.dataset.id!;
+    history.replaceState(null, '', aktiv === 'alle' ? location.pathname : '#' + aktiv);
+    render();
+  });
+  document.getElementById('suche')!.addEventListener('input', (ev) => {
+    suche = (ev.target as HTMLInputElement).value.trim().toLowerCase();
+    if (suche && aktiv !== 'alle') { aktiv = 'alle'; history.replaceState(null, '', location.pathname); }
+    render();
+  });
+
+  async function aktualisieren() {
+    try {
+      const r = await fetch('/api/live', { cache: 'no-store' });
+      if (r.ok) { daten = await r.json(); render(); }
+    } catch { /* offline – alter Stand bleibt sichtbar */ }
+  }
+  render();
+  setInterval(() => { if (!document.hidden) aktualisieren(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) aktualisieren(); });
+</script>
+
+<style is:global>
+  .live-head { background: var(--navy-deep); color: #fff; padding: 32px 0 0; position: sticky; top: 66px; z-index: 20; }
+  @media (max-width: 899px) { .live-head { position: static; } }
+  .live-head h1 { margin-bottom: 4px; }
+  .live-head .muted { color: #B8C4D0; margin-bottom: 16px; }
+  .suche { display: flex; align-items: center; gap: 8px; background: #fff; color: var(--ink-2); border-radius: var(--radius-sm); padding: 0 12px; max-width: 420px; }
+  .suche input { border: 0; outline: 0; font: inherit; padding: 12px 0; width: 100%; color: var(--ink); background: transparent; }
+  .suche:focus-within { outline: 3px solid var(--gold-bright); }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; margin-top: 18px; scrollbar-width: none; }
+  .tabs button { flex: 0 0 auto; background: transparent; color: #DCE3EA; border: 0; font: inherit; font-weight: 700; padding: 12px 16px; border-radius: 10px 10px 0 0; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .tabs button[aria-selected='true'] { background: var(--bg); color: var(--navy); }
+  .tabs .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); display: inline-block; }
+  .live-body { padding-top: 28px; min-height: 50vh; }
+  .live-body h2 { font-size: 1.5rem; margin-top: 8px; }
+  .live-body h3 { margin: 22px 0 10px; color: var(--ink-2); font-size: .85rem; text-transform: uppercase; letter-spacing: .1em; }
+  .konk + .konk { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--line); }
+  .spiele { display: grid; gap: 12px; margin-bottom: 20px; }
+  @media (min-width: 720px) { .spiele { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1040px) { .spiele { grid-template-columns: repeat(3, 1fr); } }
+  .spiel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+  .spiel.status-laeuft { border-color: #F0B7AC; box-shadow: 0 0 0 3px #FCE8E4; }
+  .spiel header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: .82rem; color: var(--ink-2); }
+  .spiel header .badge { margin-left: auto; }
+  .spiel .k { background: var(--navy); color: var(--gold-bright); font-weight: 800; padding: 1px 7px; border-radius: 5px; font-size: .75rem; }
+  .zeile { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; }
+  .zeile + .zeile { border-top: 1px dashed var(--line); }
+  .person { display: flex; flex-direction: column; min-width: 0; }
+  .person .n { font-weight: 600; }
+  .person .v { font-size: .78rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .zeile.sieger .n { font-weight: 800; }
+  .check { color: var(--ok); }
+  .saetze { display: flex; gap: 4px; }
+  .satz { width: 28px; height: 30px; display: grid; place-items: center; border-radius: 6px; background: var(--bg-2); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .satz.gew { background: var(--navy); color: #fff; }
+  .satz.offen { background: #fff; box-shadow: inset 0 0 0 1.5px #F0B7AC; color: var(--live); }
+  .notiz { margin: 6px 0 0; font-size: .8rem; color: #7A5A12; }
+  .leer { padding: 20px; background: var(--bg-2); border-radius: var(--radius); color: var(--ink-2); }
+  .bilanz { margin-top: 8px; border: 1px solid var(--line); border-radius: var(--radius); padding: 0 14px; }
+  .bilanz summary { cursor: pointer; padding: 12px 0; font-weight: 700; }
+  .bilanz table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: .9rem; }
+  .bilanz th, .bilanz td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); }
+  .bilanz th { font-size: .78rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: .05em; }
+  @media (max-width: 560px) { .bilanz th:nth-child(2), .bilanz td:nth-child(2) { display: none; } }
+  .hinweis { margin-top: 32px; }
+</style>

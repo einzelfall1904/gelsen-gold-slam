@@ -1,0 +1,135 @@
+---
+import Base from '../layouts/Base.astro';
+import Sponsoren from '../components/Sponsoren.astro';
+import { ladeDaten } from '../lib/store.js';
+import { datumLang, datumZeit, absaetze } from '../lib/format.js';
+
+const d = ladeDaten();
+const e = d.einstellungen;
+const start = `${e.datum}T${e.beginn || '09:00'}:00+02:00`;
+const anzahl = (k: string) => d.spieler.filter((s: any) => s.konkurrenz === k).length;
+const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
+---
+<Base aktiv="/">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-text">
+        <img class="hero-logo" src="/media/logo.webp" alt={`Logo ${e.name} ${e.jahr}`} width="900" height="847" />
+        <p class="eyebrow">{e.turnierart}</p>
+        <h1><span>{e.name}</span> <em>{e.jahr}</em></h1>
+        <p class="hero-date">{datumLang(e.datum)} · {e.ort}</p>
+        <div class="countdown" data-start={start} aria-live="off">
+          <div><b data-t="d">–</b><span>Tage</span></div>
+          <div><b data-t="h">–</b><span>Std.</span></div>
+          <div><b data-t="m">–</b><span>Min.</span></div>
+        </div>
+        <div class="hero-cta">
+          <a class="btn btn--gold" href={e.tennisdeUrl} target="_blank" rel="noopener">Jetzt auf tennis.de melden</a>
+          <a class="btn btn--navy" href="/live">Live-Stand{laufend > 0 && <span class="pill">{laufend} laufen</span>}</a>
+        </div>
+        <p class="small hero-note">Meldeschluss: {datumZeit(e.meldeschluss)}</p>
+      </div>
+      <div class="hero-video">
+        <video src="/media/reel.mp4" poster="/media/reel-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Kurzvideo zum Gelsen Gold Slam"></video>
+        <button class="ton" type="button" aria-pressed="false">Ton an</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap intro">
+      <div>
+        <p class="eyebrow">Willkommen</p>
+        <h2>Ein Tag. Sechs Plätze. Jede Menge Nachwuchstennis.</h2>
+        <div class="prose">{absaetze(e.begruessung).map((p) => <p>{p}</p>)}</div>
+      </div>
+      <dl class="facts card">
+        <dt>Datum</dt><dd>{datumLang(e.datum)}, ab {e.beginn} Uhr</dd>
+        <dt>Ort</dt><dd>{e.ort}<br /><span class="muted">{e.adresse}</span></dd>
+        <dt>Plätze</dt><dd>{e.untergrund}</dd>
+        <dt>Modus</dt><dd>Spiralsystem – jedes Kind spielt 2 Einzel</dd>
+        <dt>Startgeld</dt><dd>{e.startgeld} € + {e.dtbEntgelt} € DTB-Teilnehmerentgelt</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="wrap">
+      <p class="eyebrow">Konkurrenzen</p>
+      <h2>Wer spielt mit?</h2>
+      <div class="grid grid--3 konk">
+        {d.konkurrenzen.map((k: any) => (
+          <a class="card konk-card" href={`/live#${k.id}`}>
+            <span class="konk-kurz">{k.kurz}</span>
+            <h3>{k.name}</h3>
+            <p class="muted small">Jahrgänge {k.jahrgaenge}</p>
+            <p class="small"><strong>{anzahl(k.id)}</strong> von max. {k.max} Plätzen belegt</p>
+          </a>
+        ))}
+      </div>
+      <p class="small muted" style="margin-top:16px">Alle Infos zu Zulassung, Zählweise und Regeln stehen in der <a href="/ausschreibung">Ausschreibung</a>.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap"><Sponsoren sponsoren={d.sponsoren} /></div>
+  </section>
+</Base>
+
+<script>
+  const el = document.querySelector<HTMLElement>('.countdown');
+  if (el) {
+    const ziel = new Date(el.dataset.start!).getTime();
+    const set = (k: string, v: number) => { const b = el.querySelector(`[data-t="${k}"]`); if (b) b.textContent = String(v); };
+    const tick = () => {
+      const diff = Math.max(0, ziel - Date.now());
+      set('d', Math.floor(diff / 864e5)); set('h', Math.floor(diff / 36e5) % 24); set('m', Math.floor(diff / 6e4) % 60);
+      if (diff === 0) el.classList.add('vorbei');
+    };
+    tick(); setInterval(tick, 30000);
+  }
+  const video = document.querySelector('video');
+  const ton = document.querySelector<HTMLButtonElement>('.ton');
+  ton?.addEventListener('click', () => {
+    if (!video) return;
+    video.muted = !video.muted;
+    if (!video.muted) video.play();
+    ton.textContent = video.muted ? 'Ton an' : 'Ton aus';
+    ton.setAttribute('aria-pressed', String(!video.muted));
+  });
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) video?.pause();
+</script>
+
+<style>
+  .hero {
+    color: #fff; padding: 40px 0 56px; overflow: hidden;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 26px, transparent 26px 64px),
+      radial-gradient(120% 80% at 20% 0%, #1D3A55 0%, var(--navy-deep) 60%);
+  }
+  .hero-grid { display: grid; gap: 32px; align-items: center; }
+  @media (min-width: 880px) { .hero-grid { grid-template-columns: 1.25fr .75fr; gap: 48px; } }
+  .hero-logo { width: clamp(150px, 34vw, 210px); height: auto; margin-bottom: 16px; filter: drop-shadow(0 8px 24px rgba(0,0,0,.35)); }
+  .hero .eyebrow { color: var(--gold-bright); }
+  .hero h1 { text-transform: uppercase; font-style: italic; font-stretch: 72%; font-weight: 900; font-size: clamp(2.6rem, 9vw, 5rem); line-height: .95; margin-bottom: 14px; }
+  .hero h1 em { color: var(--gold-bright); font-style: italic; }
+  .hero-date { font-size: 1.15rem; color: #DCE3EA; }
+  .countdown { display: flex; gap: 10px; margin: 20px 0 24px; }
+  .countdown div { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: var(--radius-sm); padding: 10px 14px; min-width: 76px; text-align: center; }
+  .countdown b { display: block; font-size: 1.8rem; font-stretch: 75%; font-weight: 850; color: var(--gold-bright); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .countdown span { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: #B8C4D0; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .pill { background: var(--live); color: #fff; font-size: .75rem; padding: 2px 8px; border-radius: 999px; }
+  .hero-note { margin-top: 14px; color: #B8C4D0; }
+  .hero-video { position: relative; justify-self: center; width: min(300px, 78vw); }
+  .hero-video video { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 22px; border: 3px solid var(--gold-bright); box-shadow: 0 20px 50px rgba(0,0,0,.45); background: var(--navy); }
+  .ton { position: absolute; right: 12px; bottom: 12px; background: rgba(10,22,34,.75); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; cursor: pointer; }
+  .intro { display: grid; gap: 32px; }
+  @media (min-width: 880px) { .intro { grid-template-columns: 1.2fr 1fr; align-items: start; } }
+  .facts.card { padding: 4px 20px; border-top: 4px solid var(--gold); }
+  .facts.card dt:last-of-type, .facts.card dd:last-of-type { border-bottom: 0; }
+  .konk-card { text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; position: relative; }
+  .konk-card:hover { border-color: var(--gold); transform: translateY(-2px); color: inherit; }
+  .konk-card p { margin: 0; }
+  .konk-kurz { position: absolute; top: 16px; right: 16px; background: var(--navy); color: var(--gold-bright); font-weight: 800; font-size: .8rem; padding: 3px 9px; border-radius: 6px; }
+</style>

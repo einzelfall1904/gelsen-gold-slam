@@ -1,0 +1,40 @@
+---
+interface Props { sponsoren: any[]; gross?: boolean; }
+const { sponsoren, gross = false } = Astro.props;
+const haupt = sponsoren.filter((s) => s.stufe === 'haupt');
+const partner = sponsoren.filter((s) => s.stufe !== 'haupt');
+const initialen = (n: string) => n.replace(/\(.*?\)/g, '').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase();
+---
+<div class:list={['sponsoren', { gross }]}>
+  {!gross && <p class="eyebrow">Mit freundlicher Unterstützung von</p>}
+  {[['Hauptsponsor', haupt], ['Partner', partner]].map(([titel, liste]: any) => liste.length > 0 && (
+    <div class="gruppe">
+      {gross && <h2>{titel}</h2>}
+      <ul class:list={[{ haupt: titel === 'Hauptsponsor' }]}>
+        {liste.map((s: any) => {
+          const inhalt = s.logo
+            ? <img src={s.logo} alt={s.name} loading="lazy" />
+            : <span class="platzhalter" aria-hidden="true">{initialen(s.name)}</span>;
+          return (
+            <li>
+              {s.url ? <a href={s.url} target="_blank" rel="noopener sponsored">{inhalt}<span class="name">{s.name}</span></a>
+                     : <div>{inhalt}<span class="name">{s.name}</span></div>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  ))}
+  {!gross && <p class="small"><a href="/sponsoren">Sponsor werden →</a></p>}
+</div>
+
+<style>
+  .gruppe + .gruppe { margin-top: 28px; }
+  ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  ul.haupt { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  li > a, li > div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 120px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; text-decoration: none; color: var(--ink-2); text-align: center; }
+  ul.haupt li > a, ul.haupt li > div { min-height: 150px; border-color: var(--gold); }
+  img { max-height: 64px; width: auto; object-fit: contain; }
+  .platzhalter { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-soft); color: #7A5A12; font-weight: 800; font-size: .9rem; }
+  .name { font-size: .85rem; font-weight: 600; }
+</style>

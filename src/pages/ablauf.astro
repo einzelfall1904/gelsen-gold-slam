@@ -1,0 +1,51 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import { ladeDaten } from '../lib/store.js';
+import { datumLang, absaetze } from '../lib/format.js';
+const d = ladeDaten();
+const e = d.einstellungen;
+---
+<Base title="Ablauf" aktiv="/ablauf">
+  <Kopf eyebrow="Ablauf" titel="Der Turniertag" text={`${datumLang(e.datum)} · Die genauen Spielzeiten stehen nach der Auslosung im Live-Stand.`} />
+  <section class="section">
+    <div class="wrap cols">
+      <ol class="zeitplan">
+        {d.ablauf.map((a: any) => (
+          <li><time>{a.zeit}</time><div><h3>{a.titel}</h3><p>{a.text}</p></div></li>
+        ))}
+      </ol>
+      <div>
+        <div class="card spiral">
+          <p class="eyebrow">Einfach erklärt</p>
+          <h2>Wie funktioniert das Spiralsystem?</h2>
+          <ol class="schritte">
+            <li>Alle Spielerinnen und Spieler einer Konkurrenz werden nach ihrer <strong>LK</strong> (Leistungsklasse) sortiert.</li>
+            <li>Jedes Kind spielt <strong>zwei Einzel</strong> – gegen Gegner, die in dieser Liste ganz in seiner Nähe stehen (höchstens zwei Plätze entfernt).</li>
+            <li>So treffen immer etwa <strong>gleich starke</strong> Kinder aufeinander. Niemand fliegt nach dem ersten Spiel raus.</li>
+            <li>Jeder Sieg bringt <strong>LK-Punkte</strong>. Die neue LK berechnet der DTB nach dem Turnier.</li>
+          </ol>
+          <svg viewBox="0 0 320 170" role="img" aria-label="Beispiel mit sechs Spielern, nach LK sortiert: Runde 1 spielen 1 gegen 3, 2 gegen 4 und 5 gegen 6; Runde 2 spielen 1 gegen 2, 3 gegen 5 und 4 gegen 6."><path d="M30 54 Q82 14 134 54" fill="none" stroke="#C9A456" stroke-width="3" /><path d="M82 54 Q134 14 186 54" fill="none" stroke="#C9A456" stroke-width="3" /><path d="M238 54 Q264 28 290 54" fill="none" stroke="#C9A456" stroke-width="3" /><path d="M30 86 Q56 112 82 86" fill="none" stroke="#13263A" stroke-width="3" stroke-dasharray="5 4" /><path d="M134 86 Q186 126 238 86" fill="none" stroke="#13263A" stroke-width="3" stroke-dasharray="5 4" /><path d="M186 86 Q238 126 290 86" fill="none" stroke="#13263A" stroke-width="3" stroke-dasharray="5 4" />{[1,2,3,4,5,6].map((n) => <g><circle cx={30 + (n-1)*52} cy="70" r="17" fill="#fff" stroke="#13263A" stroke-width="2" /><text x={30 + (n-1)*52} y="75" text-anchor="middle" font-size="14" font-weight="700" fill="#13263A">{n}</text></g>)}<text x="160" y="164" text-anchor="middle" font-size="11" fill="#4A5866">Zahl = Platz nach LK · gold = 1. Runde · blau gestrichelt = 2. Runde</text></svg>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>Verpflegung</h3>
+          {absaetze(e.verpflegung).map((p) => <p>{p}</p>)}
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+<style>
+  .cols { display: grid; gap: 40px; }
+  @media (min-width: 960px) { .cols { grid-template-columns: 1fr 1fr; } }
+  .zeitplan { list-style: none; margin: 0; padding: 0; border-left: 3px solid var(--gold); }
+  .zeitplan li { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 0 0 24px 20px; position: relative; }
+  .zeitplan li::before { content: ''; position: absolute; left: -9px; top: 4px; width: 15px; height: 15px; border-radius: 50%; background: var(--navy); border: 3px solid var(--gold); }
+  .zeitplan time { font-weight: 850; font-stretch: 80%; font-size: 1.3rem; color: var(--navy); }
+  .zeitplan h3 { margin-bottom: 4px; }
+  .zeitplan p { margin: 0; color: var(--ink-2); }
+  .spiral { border-top: 4px solid var(--gold); }
+  .schritte { padding-left: 20px; }
+  .schritte li { margin-bottom: 8px; }
+  .spiral svg { width: 100%; height: auto; margin-top: 8px; }
+</style>

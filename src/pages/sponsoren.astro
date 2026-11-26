@@ -1,0 +1,28 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import Sponsoren from '../components/Sponsoren.astro';
+import { ladeDaten } from '../lib/store.js';
+const d = ladeDaten();
+const e = d.einstellungen;
+---
+<Base title="Sponsoren" aktiv="/sponsoren">
+  <Kopf eyebrow="Sponsoren" titel="Danke an unsere Partner" text="Ohne Unterstützung aus der Region wäre der Gelsen Gold Slam nicht möglich." />
+  <section class="section"><div class="wrap"><Sponsoren sponsoren={d.sponsoren} gross /></div></section>
+  <section class="section section--navy">
+    <div class="wrap werden">
+      <div>
+        <p class="eyebrow">Sponsor werden</p>
+        <h2>Fördern Sie den Tennisnachwuchs im Revier</h2>
+        <p>Rund 40 Kinder und Jugendliche, ihre Familien und viele Zuschauer: Ihr Logo erscheint auf dieser Website, auf Bannern an der Anlage und bei der Siegerehrung. Sachpreise für die Siegerehrung sind ebenso willkommen.</p>
+      </div>
+      <a class="btn btn--gold" href={`mailto:${e.kontaktEmail}?subject=${encodeURIComponent('Sponsoring ' + e.name + ' ' + e.jahr)}`}>Kontakt aufnehmen</a>
+    </div>
+  </section>
+</Base>
+<style>
+  .werden { display: grid; gap: 24px; align-items: center; }
+  @media (min-width: 880px) { .werden { grid-template-columns: 1fr auto; } }
+  .werden p { color: #DCE3EA; max-width: 62ch; }
+  .werden .eyebrow { color: var(--gold-bright); }
+</style>

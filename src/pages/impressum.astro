@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import Kopf from '../components/Kopf.astro';
+import { ladeDaten } from '../lib/store.js';
+import { absaetze } from '../lib/format.js';
+const e = ladeDaten().einstellungen;
+---
+<Base title="Impressum">
+  <Kopf titel="Impressum" />
+  <section class="section"><div class="wrap prose">
+    <p class="hinweis">Platzhalter – vor der Veröffentlichung vom Verein vervollständigen und prüfen lassen.</p>
+    <h2>Angaben gemäß § 5 DDG</h2>
+    {absaetze(e.impressum).map((p) => <p style="white-space:pre-line">{p}</p>)}
+  </div></section>
+</Base>
+<style>.hinweis { background: var(--gold-soft); padding: 12px 16px; border-radius: var(--radius-sm); color: #7A5A12; }</style>
