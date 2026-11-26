@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Kopf from '../components/Kopf.astro';
 import { ladeDaten } from '../lib/store.js';
 import { ZAEHLWEISEN } from '../lib/tennis.js';
-import { datumLang, datumZeit, absaetze } from '../lib/format.js';
+import { datumLang, datumZeit, absaetze, externeUrl } from '../lib/format.js';
 const d = await ladeDaten();
 const e = d.einstellungen;
 ---
@@ -48,7 +48,7 @@ const e = d.einstellungen;
         <div class="card sticky">
           <h3>Jetzt melden</h3>
           <p class="small">Die Anmeldung läuft ausschließlich über tennis.de. Du brauchst dafür eine ID-Nummer, eine LK und eine tennis.de-Lizenz.</p>
-          <a class="btn btn--gold" style="width:100%" href={e.tennisdeUrl} target="_blank" rel="noopener">Zur Anmeldung auf tennis.de</a>
+          <a class="btn btn--gold" style="width:100%" href={externeUrl(e.tennisdeUrl)} target="_blank" rel="noopener">Zur Anmeldung auf tennis.de</a>
           <p class="small muted" style="margin:12px 0 0">Meldeschluss: {datumZeit(e.meldeschluss)}</p>
         </div>
       </aside>

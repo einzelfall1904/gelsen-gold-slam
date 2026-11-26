@@ -1,4 +1,5 @@
 ---
+import { externeUrl } from '../lib/format.js';
 interface Props { sponsoren: any[]; gross?: boolean; }
 const { sponsoren, gross = false } = Astro.props;
 const haupt = sponsoren.filter((s) => s.stufe === 'haupt');
@@ -17,7 +18,7 @@ const initialen = (n: string) => n.replace(/\(.*?\)/g, '').trim().split(/\s+/).m
             : <span class="platzhalter" aria-hidden="true">{initialen(s.name)}</span>;
           return (
             <li>
-              {s.url ? <a href={s.url} target="_blank" rel="noopener sponsored">{inhalt}<span class="name">{s.name}</span></a>
+              {s.url ? <a href={externeUrl(s.url)} target="_blank" rel="noopener sponsored">{inhalt}<span class="name">{s.name}</span></a>
                      : <div>{inhalt}<span class="name">{s.name}</span></div>}
             </li>
           );

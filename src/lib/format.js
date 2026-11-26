@@ -19,3 +19,16 @@ export function datumZeit(wert) {
 export const absaetze = (t) => String(t || '').split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
 
 export const spielerName = (s) => (s ? `${s.vorname} ${s.nachname}` : 'N. N.');
+
+/**
+ * Macht aus einer eingetippten Web-Adresse einen gültigen externen Link.
+ * „www.morant.de“ → „https://www.morant.de“. Nur http(s) ist erlaubt;
+ * alles andere (z. B. „javascript:“) wird zu einer harmlosen https-Adresse.
+ */
+export function externeUrl(eingabe) {
+  const u = String(eingabe ?? '').trim();
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u)) return u;
+  if (u.startsWith('//')) return 'https:' + u;
+  return 'https://' + u.replace(/^[a-z][a-z0-9+.-]*:\/*/i, (m) => (/^(https?):/i.test(m) ? '' : m.replace(/:\/*$/, '.')));
+}

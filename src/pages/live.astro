@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { ladeDaten } from '../lib/store.js';
 import { liveDaten } from '../lib/live.js';
+import { externeUrl } from '../lib/format.js';
 
 const d = await ladeDaten();
 const e = d.einstellungen;
@@ -29,7 +30,7 @@ const json = JSON.stringify(liveDaten(d)).replace(/</g, '\\u003c');
       <div id="ausgabe" aria-live="polite"></div>
       <p class="small muted hinweis">
         Offizielle Auslosung, Tableaus und Ergebnisse (maßgeblich für die LK-Wertung):
-        <a href={e.nuligaUrl} target="_blank" rel="noopener">nuLiga / tennis.de</a>.
+        <a href={externeUrl(e.nuligaUrl)} target="_blank" rel="noopener">nuLiga / tennis.de</a>.
       </p>
     </div>
   </section>

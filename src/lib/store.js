@@ -8,6 +8,7 @@ import { seedDaten, DATEN_VERSION } from './seed.js';
 import { auswerten } from './tennis.js';
 import { migriere } from './migration.js';
 import { fotoStatus, spielerIndex } from './einwilligung.js';
+import { externeUrl } from './format.js';
 
 export const AUF_NETLIFY = Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || globalThis.Netlify);
 
@@ -77,6 +78,9 @@ export async function speichereDaten(neu) {
     g.keinePersonen = g.keinePersonen === true;
     delete g.einverstaendnis;
   }
+  // Web-Adressen vervollständigen („www.beispiel.de“ → „https://www.beispiel.de“)
+  for (const sp of neu.sponsoren) sp.url = externeUrl(sp.url);
+  for (const k of ['tennisdeUrl', 'nuligaUrl']) neu.einstellungen[k] = externeUrl(neu.einstellungen[k]);
   neu.version = DATEN_VERSION;
   neu.aktualisiert = new Date().toISOString();
   await speichereRoh(neu);

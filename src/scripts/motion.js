@@ -128,8 +128,11 @@ mm.add({ motion: '(prefers-reduced-motion: no-preference)', fine: '(hover: hover
   /* ---------- 7. Fußzeile */
   const wm = one('.wordmark');
   if (wm) {
-    const sw = SplitText.create(wm, { type: 'chars', mask: 'chars' });
-    gsap.from(sw.chars, { yPercent: 100, duration: 1, stagger: 0.05, ease: 'power4.out', scrollTrigger: { trigger: wm, start: 'top 98%', once: true } });
+    // Maske um die ganze Zeile statt um jeden Buchstaben: Kursive Buchstaben ragen
+    // über ihre eigene Box hinaus und würden sonst rechts abgeschnitten.
+    const sw = SplitText.create(wm, { type: 'lines,chars', mask: 'lines' });
+    gsap.from(sw.chars, { yPercent: 110, duration: 1, stagger: 0.05, ease: 'power4.out',
+      scrollTrigger: { trigger: wm, start: 'top 98%', once: true }, onComplete: () => sw.revert() });
     gsap.fromTo(wm, { xPercent: -4 }, { xPercent: 2, ease: 'none', scrollTrigger: { trigger: wm, start: 'top bottom', end: 'bottom top', scrub: true } });
   }
 

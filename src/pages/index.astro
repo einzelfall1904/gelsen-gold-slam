@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Sponsoren from '../components/Sponsoren.astro';
 import { ladeDaten } from '../lib/store.js';
-import { datumLang, datumZeit, absaetze } from '../lib/format.js';
+import { datumLang, datumZeit, absaetze, externeUrl } from '../lib/format.js';
 
 const d = await ladeDaten();
 const e = d.einstellungen;
@@ -30,7 +30,7 @@ const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
           <div><b data-t="m">–</b><span>Min.</span></div>
         </div>
         <div class="hero-cta">
-          <a class="btn btn--gold" href={e.tennisdeUrl} target="_blank" rel="noopener">Jetzt auf tennis.de melden</a>
+          <a class="btn btn--gold" href={externeUrl(e.tennisdeUrl)} target="_blank" rel="noopener">Jetzt auf tennis.de melden</a>
           <a class="btn btn--navy" href="/live">Live-Stand{laufend > 0 && <span class="pill">{laufend} laufen</span>}</a>
         </div>
         <p class="small hero-note">Meldeschluss: {datumZeit(e.meldeschluss)}</p>

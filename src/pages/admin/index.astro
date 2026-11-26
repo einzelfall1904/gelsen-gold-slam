@@ -312,7 +312,7 @@ const standardPasswort = STANDARD_PASSWORT;
         return `<div class="a-intro"><h1>Sponsoren</h1><p class="muted">Logo am besten als PNG mit transparentem Hintergrund oder SVG.</p></div>
           ${daten.sponsoren.map((s: any, i: number) => `<div class="card form zeile3">
             <div class="logo-prev">${s.logo ? `<img src="${esc(s.logo)}" alt="" />` : '<span>kein Logo</span>'}<label class="btn btn--ghost btn--sm">Logo hochladen<input type="file" accept="image/*" data-upload="sponsoren.${i}.logo" hidden /></label></div>
-            ${feld('Name', `sponsoren.${i}.name`, s.name)}${feld('Website', `sponsoren.${i}.url`, s.url, { typ: 'url' })}
+            ${feld('Name', `sponsoren.${i}.name`, s.name)}${feld('Website', `sponsoren.${i}.url`, s.url, { typ: 'text', hilfe: 'z. B. www.morant.de – „https://“ wird automatisch ergänzt' })}
             ${auswahl('Stufe', `sponsoren.${i}.stufe`, s.stufe, [['haupt', 'Hauptsponsor'], ['partner', 'Partner']])}
             <button type="button" class="x" data-del="sponsoren.${i}" aria-label="Sponsor löschen">✕</button></div>`).join('')}
           <button class="btn btn--ghost btn--sm" type="button" id="neuSponsor">+ Sponsor</button>`;
