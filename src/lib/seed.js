@@ -10,22 +10,29 @@ export const HINWEIS_FOTOS_ALT =
 export const HINWEIS_FOTOS =
   'Alle Teilnehmenden sind minderjährig. Fotos, auf denen ein Kind erkennbar ist, veröffentlichen wir deshalb nur mit der schriftlichen Einwilligung der Erziehungsberechtigten.\n\nDas Einwilligungsformular erhaltet ihr bei der Anmeldung vor Ort an der Turnierleitung. Ohne Einwilligung erscheinen keine Fotos eures Kindes – weder auf dieser Website noch in den Kanälen der TG Gold-Weiß.\n\nDie Einwilligung ist freiwillig und kann jederzeit ohne Angabe von Gründen per E-Mail an die Turnierleitung widerrufen werden. Betroffene Fotos entfernen wir dann umgehend.';
 
-export const DATEN_VERSION = 2;
+export const DATEN_VERSION = 3;
+
+/** Kids Edition (Mai 2027): nur U12 und U15 – U18 entfällt, dafür im Herbst eine Youth Edition. */
+export const ENTFALLENE_KONKURRENZEN = ['u18m', 'u18w'];
+export const EDITION = 'Kids Edition';
+export const AUSBLICK = 'Im Herbst 2027 folgt die Youth Edition für die älteren Jahrgänge. Termin und Ausschreibung geben wir hier rechtzeitig bekannt.';
+export const BEGRUESSUNG_ALT =
+  'Am letzten Maiwochenende wird die Anlage der TG Gold-Weiß zur Bühne für den Tennisnachwuchs: Beim Gelsen Gold Slam spielen Mädchen und Jungen in den Altersklassen U12, U15 und U18 um LK-Punkte.\n\nJedes Kind bestreitet zwei Einzel gegen Gegner mit ähnlicher Leistungsklasse – faire Matches, ein kompakter Turniertag und jede Menge Tennis auf sechs Sandplätzen.\n\nWir freuen uns auf spannende Spiele, gute Stimmung und viele Zuschauer!';
+export const BEGRUESSUNG =
+  'Am letzten Maiwochenende wird die Anlage der TG Gold-Weiß zur Bühne für die Jüngsten: Bei der Kids Edition des Gelsen Gold Slam spielen Mädchen und Jungen in den Altersklassen U12 und U15 um LK-Punkte.\n\nJedes Kind bestreitet zwei Einzel gegen Gegner mit ähnlicher Leistungsklasse – faire Matches, ein kompakter Turniertag und jede Menge Tennis auf sechs Sandplätzen.\n\nWir freuen uns auf spannende Spiele, gute Stimmung und viele Zuschauer!';
 
 const KONKURRENZEN = [
   { id: 'u12m', name: 'Junioren U12', kurz: 'U12 m', jahrgaenge: '2015 – 2017', max: 8, hinweis: 'Jahrgang 2015 sowie jüngere Jahrgänge 2016/2017 (Höherspielen erlaubt).' },
   { id: 'u12w', name: 'Juniorinnen U12', kurz: 'U12 w', jahrgaenge: '2015 – 2017', max: 8, hinweis: 'Jahrgang 2015 sowie jüngere Jahrgänge 2016/2017 (Höherspielen erlaubt).' },
   { id: 'u15m', name: 'Junioren U15', kurz: 'U15 m', jahrgaenge: '2012 – 2015', max: 8, hinweis: 'Jahrgang 2012 sowie jüngere Jahrgänge 2013–2015.' },
   { id: 'u15w', name: 'Juniorinnen U15', kurz: 'U15 w', jahrgaenge: '2012 – 2015', max: 8, hinweis: 'Jahrgang 2012 sowie jüngere Jahrgänge 2013–2015.' },
-  { id: 'u18m', name: 'Junioren U18', kurz: 'U18 m', jahrgaenge: '2009 – 2014', max: 8, hinweis: 'Jahrgang 2009 sowie jüngere Jahrgänge 2010–2014.' },
-  { id: 'u18w', name: 'Juniorinnen U18', kurz: 'U18 w', jahrgaenge: '2009 – 2014', max: 8, hinweis: 'Jahrgang 2009 sowie jüngere Jahrgänge 2010–2014.' },
 ];
 
 const VORNAMEN_M = ['Ben', 'Elias', 'Finn', 'Jonas', 'Leon', 'Luca', 'Noah', 'Paul', 'Emil', 'Mats', 'Theo', 'Anton', 'Jan', 'Mika', 'Linus', 'Henri', 'Ole', 'Tom'];
 const VORNAMEN_W = ['Emma', 'Mia', 'Hannah', 'Lea', 'Lina', 'Marie', 'Ella', 'Clara', 'Ida', 'Lotta', 'Frieda', 'Nele', 'Paula', 'Greta', 'Mila', 'Romy'];
 const NACHNAMEN = ['Becker', 'Hoffmann', 'Krüger', 'Lange', 'Meier', 'Neumann', 'Peters', 'Richter', 'Schulte', 'Vogel', 'Wagner', 'Winkler', 'Brandt', 'Kaiser', 'Lorenz', 'Otto', 'Sommer', 'Thiel', 'Busch', 'Franke'];
 const VEREINE = ['TG Gold-Weiß Gelsenkirchen', 'TC Beispielstadt', 'TV Musterdorf', 'TC Rot-Blau Testheim', 'TuS Probehausen'];
-const ANZAHL = { u12m: 6, u12w: 5, u15m: 6, u15w: 6, u18m: 6, u18w: 4 };
+const ANZAHL = { u12m: 6, u12w: 5, u15m: 6, u15w: 6 };
 
 function erzeugeSpieler() {
   const spieler = [];
@@ -103,6 +110,8 @@ export function seedDaten() {
   return {
     einstellungen: {
       name: 'Gelsen Gold Slam',
+      edition: EDITION,
+      ausblick: AUSBLICK,
       jahr: '2027',
       untertitel: 'LK-Jugendturnier der TG Gold-Weiß Gelsenkirchen',
       datum: '2027-05-29',
@@ -126,8 +135,7 @@ export function seedDaten() {
       tennisdeUrl: 'https://www.tennis.de/spielen/turniersuche.html',
       nuligaUrl: 'https://wtv.liga.nu/cgi-bin/WebObjects/nuLigaTENDE.woa/wa/tournamentCalendar?federation=WTV',
       plaetze: 6,
-      begruessung:
-        'Am letzten Maiwochenende wird die Anlage der TG Gold-Weiß zur Bühne für den Tennisnachwuchs: Beim Gelsen Gold Slam spielen Mädchen und Jungen in den Altersklassen U12, U15 und U18 um LK-Punkte.\n\nJedes Kind bestreitet zwei Einzel gegen Gegner mit ähnlicher Leistungsklasse – faire Matches, ein kompakter Turniertag und jede Menge Tennis auf sechs Sandplätzen.\n\nWir freuen uns auf spannende Spiele, gute Stimmung und viele Zuschauer!',
+      begruessung: BEGRUESSUNG,
       anfahrt:
         'Die Anlage liegt am Nienhausenbusch in Gelsenkirchen. Parkplätze sind an der Anlage vorhanden. Bitte bildet Fahrgemeinschaften, am Turniertag wird es voll.\n\nMit Bus und Bahn: Haltestellen und Verbindungen findet ihr in der Fahrplanauskunft des VRR.',
       verpflegung:

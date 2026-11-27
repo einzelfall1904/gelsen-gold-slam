@@ -9,6 +9,8 @@ const e = d.einstellungen;
 const start = `${e.datum}T${e.beginn || '09:00'}:00+02:00`;
 const anzahl = (k: string) => d.spieler.filter((s: any) => s.konkurrenz === k).length;
 const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
+// „Kids Edition“ → großes „Kids“ + kleines „Edition“ (funktioniert genauso für „Youth Edition“)
+const [editionGross, ...editionRest] = String(e.edition || '').trim().split(/\s+/);
 ---
 <Base aktiv="/">
   <section class="hero">
@@ -20,7 +22,15 @@ const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
     </svg>
     <div class="wrap hero-grid">
       <div class="hero-text">
-        <img class="hero-logo" src="/media/logo.webp" alt={`Logo ${e.name} ${e.jahr}`} width="900" height="847" />
+        <div class="hero-marke">
+          <img class="hero-logo" src="/media/logo.webp" alt={`Logo ${e.name} ${e.jahr}`} width="900" height="847" />
+          {editionGross && (
+            <p class="edition" aria-label={e.edition}>
+              <b aria-hidden="true">{editionGross}</b>
+              {editionRest.length > 0 && <span aria-hidden="true">{editionRest.join(' ')}</span>}
+            </p>
+          )}
+        </div>
         <p class="eyebrow">{e.turnierart}</p>
         <h1><span>{e.name}</span> <em>{e.jahr}</em></h1>
         <p class="hero-date">{datumLang(e.datum)} · {e.ort}</p>
@@ -63,7 +73,7 @@ const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
     <div class="wrap">
       <p class="eyebrow">Konkurrenzen</p>
       <h2>Wer spielt mit?</h2>
-      <div class="grid grid--3 konk">
+      <div class="grid konk">
         {d.konkurrenzen.map((k: any) => (
           <a class="card konk-card" href={`/live#${k.id}`}>
             <span class="konk-kurz">{k.kurz}</span>
@@ -74,6 +84,12 @@ const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
         ))}
       </div>
       <p class="small muted" style="margin-top:16px">Alle Infos zu Zulassung, Zählweise und Regeln stehen in der <a href="/ausschreibung">Ausschreibung</a>.</p>
+      {e.ausblick && (
+        <aside class="ausblick card">
+          <span class="ausblick-tag">Ausblick</span>
+          <p>{e.ausblick}</p>
+        </aside>
+      )}
     </div>
   </section>
 
@@ -117,7 +133,21 @@ const laufend = d.spiele.filter((s: any) => s.status === 'laeuft').length;
   }
   .hero-grid { display: grid; gap: 32px; align-items: center; }
   @media (min-width: 880px) { .hero-grid { grid-template-columns: 1.25fr .75fr; gap: 48px; } }
-  .hero-logo { width: clamp(150px, 34vw, 210px); height: auto; margin-bottom: 16px; filter: drop-shadow(0 8px 24px rgba(0,0,0,.35)); }
+  .hero-marke { display: flex; align-items: center; gap: clamp(14px, 3vw, 28px); margin-bottom: 18px; }
+  .hero-logo { width: clamp(130px, 30vw, 210px); height: auto; filter: drop-shadow(0 8px 24px rgba(0,0,0,.35)); }
+  /* Stempel „Kids Edition“ im Stil des Turnierlogos: Gold, Dunkelblau, weißer Rand */
+  .edition { margin: 0; display: inline-flex; flex-direction: column; align-items: center; transform: rotate(-6deg);
+    background: var(--gold-bright); color: var(--navy-deep); padding: 8px 18px 7px; border-radius: 12px;
+    box-shadow: 0 0 0 3px var(--navy-deep), 0 0 0 6px #fff, 0 14px 30px rgba(0,0,0,.45); }
+  .edition b { font-size: clamp(2.1rem, 7vw, 3.4rem); font-weight: 900; font-style: italic; font-stretch: 68%; line-height: .88; text-transform: uppercase; letter-spacing: .01em; padding-right: .06em; }
+  .edition span { font-size: clamp(.62rem, 1.6vw, .82rem); font-weight: 800; letter-spacing: .38em; margin-right: -.38em; text-transform: uppercase; }
+  .konk { grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .konk { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1000px) { .konk { grid-template-columns: repeat(4, 1fr); } }
+  .ausblick { margin-top: 24px; display: flex; gap: 14px; align-items: center; background: var(--navy); color: #E6EBF0; border: 0; }
+  .ausblick p { margin: 0; }
+  .ausblick-tag { flex: none; background: var(--gold-bright); color: var(--navy-deep); font-weight: 800; font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; padding: 4px 10px; border-radius: 6px; }
+  @media (max-width: 520px) { .ausblick { flex-direction: column; align-items: flex-start; } }
   .hero .eyebrow { color: var(--gold-bright); }
   .hero h1 { text-transform: uppercase; font-style: italic; font-stretch: 72%; font-weight: 900; font-size: clamp(2.6rem, 9vw, 5rem); line-height: .95; margin-bottom: 14px; }
   .hero h1 em { color: var(--gold-bright); font-style: italic; }

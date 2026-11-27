@@ -5,7 +5,8 @@ import { ladeDaten } from '../lib/store.js';
 interface Props { title?: string; description?: string; aktiv?: string; }
 const { title, description, aktiv } = Astro.props;
 const { einstellungen: e } = await ladeDaten();
-const seitenTitel = title ? `${title} – ${e.name} ${e.jahr}` : `${e.name} ${e.jahr}`;
+const turnier = `${e.name} ${e.jahr}${e.edition ? ' – ' + e.edition : ''}`;
+const seitenTitel = title ? `${title} – ${turnier}` : turnier;
 const nav = [
   ['/', 'Start'],
   ['/live', 'Live-Stand'],
@@ -35,7 +36,7 @@ const nav = [
       <div class="wrap bar">
         <a class="brand" href="/" aria-label={`${e.name} – Startseite`}>
           <img src="/media/logo-192.png" alt="" width="44" height="44" />
-          <span><strong>{e.name}</strong><small>{e.jahr}</small></span>
+          <span><strong>{e.name}</strong><small>{e.jahr}{e.edition && ` · ${e.edition}`}</small></span>
         </a>
         <button class="menu-btn" type="button" aria-expanded="false" aria-controls="hauptnav">
           <span class="visually-hidden">Menü</span>
@@ -57,7 +58,7 @@ const nav = [
     <footer class="site-footer">
       <div class="wrap foot">
         <div>
-          <strong>{e.name} {e.jahr}</strong><br />
+          <strong>{turnier}</strong><br />
           <span>{e.untertitel}</span><br />
           <span>{e.adresse}</span>
         </div>

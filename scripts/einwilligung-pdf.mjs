@@ -41,7 +41,7 @@ p { margin: 0 0 4px; }
 .linie { border-bottom: .8pt solid #0E1A24; height: 1px; }
 .feld span { font-size: 7.4pt; color: #4A5866; }
 .box { display: inline-block; width: 10px; height: 10px; border: 1pt solid #0E1A24; border-radius: 2px; margin-right: 6px; vertical-align: -1px; flex: none; }
-.konk { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 10px; margin-top: 7px; }
+.konk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px 10px; margin-top: 7px; }
 ul.wahl { list-style: none; padding: 0; margin: 4px 0 0; }
 ul.wahl li { display: flex; gap: 2px; padding: 3.5px 0; border-bottom: .5pt dotted #C9C3B5; }
 ul.wahl li small { color: #4A5866; display: block; font-size: 7.8pt; }
@@ -59,7 +59,7 @@ ul.wahl li small { color: #4A5866; display: block; font-size: 7.8pt; }
   <img src="${logo}" alt="">
   <div class="t">
     <h1>Einwilligung zur Veröffentlichung von Fotos</h1>
-    <p><strong>${e.name} ${e.jahr}</strong> · ${e.turnierart} · ${datum} · ${e.ort}</p>
+    <p><strong>${e.name} ${e.jahr}${e.edition ? ' – ' + e.edition : ''}</strong> · ${e.turnierart} · ${datum} · ${e.ort}</p>
   </div>
 </header>
 

@@ -57,3 +57,29 @@ test('Migration: alte Daten bekommen Einwilligungsfelder, alter Foto-Haken gilt 
   assert.equal(fotoStatus(daten.galerie[0], spielerIndex(daten.spieler)).oeffentlich, false);
   assert.equal(migriere(daten).geaendert, false);
 });
+
+test('Migration Version 3: U18 entfällt, Edition und Ausblick kommen dazu', async () => {
+  const { BEGRUESSUNG_ALT } = await import('../src/lib/seed.js');
+  const alt = {
+    version: 2,
+    einstellungen: { begruessung: BEGRUESSUNG_ALT },
+    konkurrenzen: [{ id: 'u12m' }, { id: 'u15w' }, { id: 'u18m' }, { id: 'u18w' }],
+    spieler: [{ id: 'a', konkurrenz: 'u12m' }, { id: 'b', konkurrenz: 'u18m' }, { id: 'c', konkurrenz: 'u18w' }],
+    spiele: [{ id: 'm1', konkurrenz: 'u12m' }, { id: 'm2', konkurrenz: 'u18w' }],
+    galerie: [{ id: 'g', personen: ['a', 'b'] }],
+  };
+  const { daten } = migriere(alt);
+  assert.deepEqual(daten.konkurrenzen.map((k) => k.id), ['u12m', 'u15w']);
+  assert.deepEqual(daten.spieler.map((s) => s.id), ['a']);
+  assert.deepEqual(daten.spiele.map((s) => s.id), ['m1']);
+  assert.equal(daten.einstellungen.edition, 'Kids Edition');
+  assert.match(daten.einstellungen.begruessung, /U12 und U15/);
+  // Foto mit gelöschtem U18-Kind bleibt verborgen
+  assert.equal(fotoStatus(daten.galerie[0], spielerIndex(daten.spieler)).oeffentlich, false);
+});
+
+test('Migration lässt eigene Texte und eine geänderte Edition in Ruhe', () => {
+  const { daten } = migriere({ version: 2, einstellungen: { begruessung: 'Eigener Text', edition: 'Youth Edition' }, konkurrenzen: [], spieler: [], spiele: [], galerie: [] });
+  assert.equal(daten.einstellungen.begruessung, 'Eigener Text');
+  assert.equal(daten.einstellungen.edition, 'Youth Edition');
+});

@@ -8,7 +8,7 @@ const d = await ladeDaten();
 const e = d.einstellungen;
 ---
 <Base title="Ausschreibung" aktiv="/ausschreibung">
-  <Kopf eyebrow="Ausschreibung" titel={`${e.name} ${e.jahr}`} text={`${e.turnierart} nach den Richtlinien des Westfälischen Tennis-Verbandes (WTV).`} />
+  <Kopf eyebrow={e.edition ? `Ausschreibung · ${e.edition}` : "Ausschreibung"} titel={`${e.name} ${e.jahr}`} text={`${e.turnierart} nach den Richtlinien des Westfälischen Tennis-Verbandes (WTV).`} />
   <section class="section">
     <div class="wrap cols">
       <div>

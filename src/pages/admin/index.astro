@@ -274,6 +274,7 @@ const standardPasswort = STANDARD_PASSWORT;
         return `<div class="a-intro"><h1>Texte &amp; Eckdaten</h1><p class="muted">Absätze durch eine Leerzeile trennen.</p></div>
           <div class="card form"><h2>Turnier</h2>
             ${feld('Name', p + 'name', e.name)}${feld('Jahr', p + 'jahr', e.jahr)}
+            ${feld('Edition', p + 'edition', e.edition, { hilfe: 'z. B. „Kids Edition“ oder „Youth Edition“ – erscheint als Stempel auf der Startseite. Leer = kein Stempel.' })}${feld('Ausblick (Startseite)', p + 'ausblick', e.ausblick, { zeilen: 2, hilfe: 'Kurzer Hinweis, z. B. auf die nächste Edition. Leer = ausgeblendet.' })}
             ${feld('Untertitel', p + 'untertitel', e.untertitel, { breit: true })}${feld('Turnierart', p + 'turnierart', e.turnierart, { breit: true })}
             ${feld('Datum', p + 'datum', e.datum, { typ: 'date' })}${feld('Beginn', p + 'beginn', e.beginn, { typ: 'time' })}
             ${feld('Meldeschluss', p + 'meldeschluss', e.meldeschluss, { typ: 'datetime-local' })}${feld('Auslosung', p + 'auslosung', e.auslosung, { typ: 'datetime-local', hilfe: 'Mind. 24 Std. zwischen Veröffentlichung der Spieltermine und Turnierbeginn.' })}

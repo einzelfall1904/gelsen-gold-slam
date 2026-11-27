@@ -52,6 +52,12 @@ mm.add({ motion: '(prefers-reduced-motion: no-preference)', fine: '(hover: hover
     });
     tl.to($('.hero-court .court-line'), { strokeDashoffset: 0, duration: 1.6, stagger: 0.12, ease: 'power2.inOut' }, 0);
     tl.from(one('.hero-logo'), { autoAlpha: 0, scale: 0.6, rotate: -12, duration: 1, ease: 'back.out(1.7)' }, 0.05);
+    // Stempel „Kids Edition“ wird aufgedrückt
+    const ed = one('.edition');
+    if (ed) {
+      tl.from(ed, { autoAlpha: 0, scale: 2.6, rotate: -28, duration: 0.55, ease: 'power4.in' }, 0.75)
+        .to(ed, { keyframes: [{ scale: 0.94, duration: 0.08 }, { scale: 1, duration: 0.35, ease: 'elastic.out(1, 0.45)' }] }, '>');
+    }
     const h1 = one('.hero h1');
     if (h1) {
       const s = SplitText.create(h1, { type: 'words,chars', mask: 'words' });

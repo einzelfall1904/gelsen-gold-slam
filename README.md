@@ -1,6 +1,6 @@
 # Gelsen Gold Slam 2027 – Turnierwebsite
 
-Website für das LK-Jugendturnier (U12, U15, U18 – m/w, Spiralsystem) der TG Gold-Weiß Gelsenkirchen.
+Website für die **Kids Edition** des LK-Jugendturniers (U12 und U15 – m/w, Spiralsystem) der TG Gold-Weiß Gelsenkirchen. Im Herbst folgt eine Youth Edition: dafür in der Verwaltung unter „Texte & Eckdaten“ die Edition umstellen.
 Läuft im Moment **nur lokal zum Testen**.
 
 ## Starten (einmalig Node.js installieren)
