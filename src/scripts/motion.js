@@ -68,7 +68,7 @@ mm.add({ motion: '(prefers-reduced-motion: no-preference)', fine: '(hover: hover
       .from($('.hero-cta .btn, .hero-note'), { autoAlpha: 0, y: 16, scale: 0.96, duration: 0.6, stagger: 0.08 }, 0.7)
       .fromTo(one('.hero-video video'), { clipPath: 'inset(100% 0% 0% 0% round 22px)', scale: 1.08 },
         { clipPath: 'inset(0% 0% 0% 0% round 22px)', scale: 1, duration: 1.3, ease: 'expo.out', clearProps: 'clipPath' }, 0.3)
-      .from(one('.hero-video .ton'), { autoAlpha: 0, x: -16, duration: 0.6, ease: 'back.out(1.8)' }, 1.1);
+      .from($('.hero-video .ton:not([hidden]), .hero-video .abspielen:not([hidden])'), { autoAlpha: 0, scale: 0.6, duration: 0.6, ease: 'back.out(1.8)' }, 1.1);
 
     // Countdown zählt von 0 hoch, sobald die echten Werte gesetzt sind
     $('.countdown b').forEach((b) => {

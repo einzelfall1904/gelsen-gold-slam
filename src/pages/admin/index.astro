@@ -173,7 +173,7 @@ const standardPasswort = STANDARD_PASSWORT;
           .sort((a: any, b: any) => (st(b.i) === 'laeuft' ? 1 : 0) - (st(a.i) === 'laeuft' ? 1 : 0) || a.s.zeit.localeCompare(b.s.zeit) || a.s.platz - b.s.platz);
         const offen = daten.spiele.filter((s: any) => ['geplant', 'laeuft'].includes(s.status)).length;
         return `<div class="a-intro"><h1>Ergebnisse eintragen</h1>
-          <p class="muted">${offen} von ${daten.spiele.length} Spielen offen. Status wählen, Sätze eintippen, „Ergebnis veröffentlichen“ – fertig. Zuschauer sehen es nach spätestens 30 Sekunden.</p></div>
+          <p class="muted">${offen} von ${daten.spiele.length} Spielen offen. Status wählen, Sätze eintippen, „Ergebnis veröffentlichen“ – fertig. Zuschauer sehen es beim nächsten Abruf, spätestens nach 2 Minuten.</p></div>
           <div class="filter">
             <select id="filterK" aria-label="Konkurrenz"><option value="alle">Alle Konkurrenzen</option>${daten.konkurrenzen.map((k: any) => `<option value="${esc(k.id)}" ${filterK === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>
             <div class="seg" role="group" aria-label="Spiele filtern">${[['offen', 'Offen'], ['fertig', 'Fertig'], ['alle', 'Alle']].map(([v, t]) => `<button type="button" data-fs="${v}" aria-pressed="${filterS === v}">${t}</button>`).join('')}</div>

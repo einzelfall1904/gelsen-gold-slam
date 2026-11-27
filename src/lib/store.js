@@ -9,6 +9,7 @@ import { auswerten } from './tennis.js';
 import { migriere } from './migration.js';
 import { fotoStatus, spielerIndex } from './einwilligung.js';
 import { externeUrl } from './format.js';
+import { leereZwischenspeicher } from './cache.js';
 
 export const AUF_NETLIFY = Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || globalThis.Netlify);
 
@@ -84,12 +85,14 @@ export async function speichereDaten(neu) {
   neu.version = DATEN_VERSION;
   neu.aktualisiert = new Date().toISOString();
   await speichereRoh(neu);
+  await leereZwischenspeicher(); // Besucher sehen die Änderung sofort beim nächsten Abruf
   return { ok: true, daten: neu };
 }
 
 export async function zuruecksetzen() {
   const d = seedDaten();
   await speichereRoh(d);
+  await leereZwischenspeicher();
   return d;
 }
 

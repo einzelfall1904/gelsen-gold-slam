@@ -46,8 +46,13 @@ const [editionGross, ...editionRest] = String(e.edition || '').trim().split(/\s+
         <p class="small hero-note">Meldeschluss: {datumZeit(e.meldeschluss)}</p>
       </div>
       <div class="hero-video">
-        <video src="/media/reel.mp4" poster="/media/reel-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Kurzvideo zum Gelsen Gold Slam"></video>
-        <button class="ton" type="button" aria-pressed="false">Ton an</button>
+        <!-- Video lädt erst bei Bedarf: am Computer automatisch, am Handy nach Antippen (spart Datenvolumen und Netlify-Credits) -->
+        <video poster="/media/reel-poster.jpg" muted loop playsinline preload="none" data-src="/media/reel.mp4" aria-label="Kurzvideo zum Gelsen Gold Slam"></video>
+        <button class="abspielen" type="button" hidden>
+          <span class="play" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
+          <span>Video abspielen <small>(1 MB)</small></span>
+        </button>
+        <button class="ton" type="button" aria-pressed="false" hidden>Ton an</button>
       </div>
     </div>
   </section>
@@ -110,16 +115,38 @@ const [editionGross, ...editionRest] = String(e.edition || '').trim().split(/\s+
     };
     tick(); setInterval(tick, 30000);
   }
-  const video = document.querySelector('video');
+  const video = document.querySelector<HTMLVideoElement>('.hero-video video');
   const ton = document.querySelector<HTMLButtonElement>('.ton');
+  const abspielen = document.querySelector<HTMLButtonElement>('.abspielen');
+  const tonAnzeigen = () => {
+    if (!ton || !video) return;
+    ton.hidden = false;
+    ton.textContent = video.muted ? 'Ton an' : 'Ton aus';
+    ton.setAttribute('aria-pressed', String(!video.muted));
+  };
+  const starten = (mitTon: boolean) => {
+    if (!video) return;
+    if (!video.src) video.src = video.dataset.src || '';
+    video.muted = !mitTon;
+    video.play().catch(() => {});
+    if (abspielen) abspielen.hidden = true;
+    tonAnzeigen();
+  };
+  // Automatisch nur am Computer mit schneller Verbindung, ohne „Datensparmodus“ und ohne „Bewegung reduzieren“
+  const verbindung = (navigator as any).connection;
+  const sparen = verbindung?.saveData || /(^|-)2g$/.test(verbindung?.effectiveType || '');
+  const autoStart = matchMedia('(min-width: 880px) and (hover: hover)').matches
+    && !matchMedia('(prefers-reduced-motion: reduce)').matches && !sparen;
+  if (autoStart) starten(false);
+  else if (abspielen) abspielen.hidden = false;
+  // Antippen = bewusst ansehen → mit Ton starten
+  abspielen?.addEventListener('click', () => starten(true));
   ton?.addEventListener('click', () => {
     if (!video) return;
     video.muted = !video.muted;
-    if (!video.muted) video.play();
-    ton.textContent = video.muted ? 'Ton an' : 'Ton aus';
-    ton.setAttribute('aria-pressed', String(!video.muted));
+    if (!video.muted) video.play().catch(() => {});
+    tonAnzeigen();
   });
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) video?.pause();
 </script>
 
 <style>
@@ -161,6 +188,13 @@ const [editionGross, ...editionRest] = String(e.edition || '').trim().split(/\s+
   .hero-note { margin-top: 14px; color: #B8C4D0; }
   .hero-video { position: relative; justify-self: center; width: min(300px, 78vw); }
   .hero-video video { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 22px; border: 3px solid var(--gold-bright); box-shadow: 0 20px 50px rgba(0,0,0,.45); background: var(--navy); }
+  .abspielen { position: absolute; inset: 0; margin: auto; width: max-content; height: max-content; display: flex; flex-direction: column; align-items: center; gap: 10px; background: none; border: 0; color: #fff; font: inherit; font-weight: 700; cursor: pointer; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+  .abspielen .play { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-bright); color: var(--navy-deep); box-shadow: 0 0 0 6px rgba(242,188,60,.3), 0 10px 30px rgba(0,0,0,.5); transition: transform .15s; }
+  .abspielen:hover .play { transform: scale(1.06); }
+  .abspielen > span:last-child { background: rgba(10,22,34,.88); padding: 6px 14px; border-radius: 999px; text-shadow: none; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+  .abspielen small { font-weight: 500; opacity: .8; }
+  .hero-video:has(.abspielen:not([hidden])) video { filter: brightness(.7); }
+  .abspielen[hidden], .ton[hidden] { display: none; }
   .ton { position: absolute; right: 12px; bottom: 12px; background: rgba(10,22,34,.75); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; cursor: pointer; }
   .intro { display: grid; gap: 32px; }
   @media (min-width: 880px) { .intro { grid-template-columns: 1.2fr 1fr; align-items: start; } }

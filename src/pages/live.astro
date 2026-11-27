@@ -13,7 +13,13 @@ const json = JSON.stringify(liveDaten(d)).replace(/</g, '\\u003c');
     <div class="wrap">
       <p class="eyebrow">Live-Stand</p>
       <h1>Spiele &amp; Ergebnisse</h1>
-      <p class="muted">Wird automatisch alle 30 Sekunden aktualisiert · <span id="stand">–</span></p>
+      <p class="muted stand-zeile">
+        <span>Aktualisiert sich alle 2 Minuten · <span id="stand">–</span></span>
+        <button type="button" id="jetzt" class="jetzt">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Jetzt aktualisieren</span>
+        </button>
+      </p>
       <div class="werkzeuge">
         <label class="suche">
           <span class="visually-hidden">Spieler suchen</span>
@@ -154,15 +160,28 @@ const json = JSON.stringify(liveDaten(d)).replace(/</g, '\\u003c');
     render();
   });
 
-  async function aktualisieren() {
+  // Alle 2 Minuten neu laden (spart Netlify-Credits), dazu „Jetzt aktualisieren“
+  // und automatisch beim Zurückkehren in den Tab – aber nie öfter als alle 20 Sekunden.
+  const INTERVALL = 2 * 60 * 1000;
+  const MINDESTABSTAND = 20 * 1000;
+  let zuletzt = Date.now();
+  const knopf = document.getElementById('jetzt') as HTMLButtonElement;
+  async function aktualisieren(sofort = false) {
+    if (!sofort && Date.now() - zuletzt < MINDESTABSTAND) return;
+    zuletzt = Date.now();
+    knopf.classList.add('laedt'); knopf.disabled = true;
     try {
       const r = await fetch('/api/live', { cache: 'no-store' });
       if (r.ok) { daten = await r.json(); render(); }
     } catch { /* offline – alter Stand bleibt sichtbar */ }
+    knopf.classList.remove('laedt');
+    // kurze Sperre, damit niemand im Sekundentakt drückt
+    setTimeout(() => { knopf.disabled = false; }, 10000);
   }
   render();
-  setInterval(() => { if (!document.hidden) aktualisieren(); }, 30000);
+  setInterval(() => { if (!document.hidden) aktualisieren(true); }, INTERVALL);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) aktualisieren(); });
+  knopf.addEventListener('click', () => aktualisieren(true));
 </script>
 
 <style is:global>
@@ -170,6 +189,13 @@ const json = JSON.stringify(liveDaten(d)).replace(/</g, '\\u003c');
   @media (max-width: 899px) { .live-head { position: static; } }
   .live-head h1 { margin-bottom: 4px; }
   .live-head .muted { color: #B8C4D0; margin-bottom: 16px; }
+  .stand-zeile { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .jetzt { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; min-height: 36px; }
+  .jetzt:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+  .jetzt:disabled { opacity: .55; cursor: default; }
+  .jetzt.laedt svg { animation: drehen .8s linear infinite; }
+  @keyframes drehen { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .jetzt.laedt svg { animation: none; } }
   .suche { display: flex; align-items: center; gap: 8px; background: #fff; color: var(--ink-2); border-radius: var(--radius-sm); padding: 0 12px; max-width: 420px; }
   .suche input { border: 0; outline: 0; font: inherit; padding: 12px 0; width: 100%; color: var(--ink); background: transparent; }
   .suche:focus-within { outline: 3px solid var(--gold-bright); }

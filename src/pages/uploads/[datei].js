@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { bildLaden, ladeDaten, dateiOeffentlich } from '../../lib/store.js';
 import { istAngemeldet } from '../../lib/auth.js';
+import { CACHE_TAG } from '../../lib/cache.js';
 
 const TYP = { '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
 
@@ -13,8 +14,13 @@ export const GET = async ({ params, cookies }) => {
   if (!frei && !istAngemeldet(cookies)) return new Response('Nicht gefunden', { status: 404 });
   const daten = await bildLaden(name);
   if (!daten) return new Response('Nicht gefunden', { status: 404 });
-  // Kein langes Zwischenspeichern: ein Widerruf muss sofort wirken
-  const headers = { 'content-type': typ, 'cache-control': frei ? 'public, max-age=300' : 'private, no-store', 'x-content-type-options': 'nosniff' };
+  // Freigegebene Bilder: Netlify darf sie zwischenspeichern; jedes Speichern in der Verwaltung
+  // (z. B. ein Widerruf der Einwilligung) leert diesen Zwischenspeicher sofort.
+  // Verborgene Bilder (nur Turnierleitung) werden nirgends zwischengespeichert.
+  const headers = frei
+    ? { 'content-type': typ, 'cache-control': 'public, max-age=60', 'netlify-cdn-cache-control': 'public, durable, s-maxage=300', 'netlify-cache-tag': CACHE_TAG }
+    : { 'content-type': typ, 'cache-control': 'private, no-store', 'netlify-cdn-cache-control': 'no-store' };
+  headers['x-content-type-options'] = 'nosniff';
   if (typ === 'image/svg+xml') headers['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'";
   return new Response(daten, { headers });
 };
